@@ -14,6 +14,9 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -21,6 +24,7 @@ module {
   %c104_mof = arith.constant 104 : index
   %c_magic = arith.constant 32 : i8
   %c0x40 = arith.constant 64 : i8
+  %c0 = arith.constant 0 : index
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0_i32 = arith.constant 0 : i32
@@ -35,6 +39,8 @@ module {
   %heap_obj = memref.alloc() : memref<8xi8>
   %read_value_25 = memref.alloca() : memref<8xi8>
   memref.copy %heap_obj, %read_value_25 : memref<8xi8> to memref<8xi8>
+  %use_val_read_value_25 = memref.load %read_value_25[%c0] : memref<8xi8>
+  func.call @use(%use_val_read_value_25) : (i8) -> ()
   func.call @exit(%test_success) : (i32) -> ()
 
 

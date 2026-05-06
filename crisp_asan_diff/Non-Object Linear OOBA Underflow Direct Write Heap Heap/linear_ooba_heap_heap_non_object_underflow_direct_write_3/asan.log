@@ -1,0 +1,67 @@
+=== ASan (rc=1, behavior=OTHER:1) ===
+--- stdout ---
+[asan] Compiling bufferized MLIR -> LLVM dialect ...
+[cmd] /home/origin/torch-mlir/build/bin/mlir-opt /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3_dl.mlir --pass-pipeline=builtin.module(func.func(asan-access-instrument),func.func(asan-lifecycle-instrument),func.func(convert-linalg-to-loops),func.func(lower-affine),canonicalize,convert-asan-to-llvm,convert-scf-to-cf,func.func(arith-expand),func.func(convert-math-to-llvm),convert-math-to-libm,expand-strided-metadata,finalize-memref-to-llvm,convert-bufferization-to-memref,finalize-memref-to-llvm,convert-vector-to-scf,convert-vector-to-llvm,func.func(convert-arith-to-llvm),convert-func-to-llvm,convert-cf-to-llvm,convert-complex-to-llvm,convert-asan-globals-to-llvm,reconcile-unrealized-casts,canonicalize,cse) -o /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3_llvm.mlir
+[asan] MLIR lowering done in 0.0299 s
+[asan] Translating LLVM dialect -> LLVM IR ...
+[cmd] /home/origin/torch-mlir/build/bin/mlir-translate /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3_llvm.mlir --mlir-to-llvmir -o /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3.ll
+[asan] Compiling LLVM IR -> object file ...
+[cmd] /home/origin/torch-mlir/build/bin/llc /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3.ll -o /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3.o --relocation-model=pic --filetype=obj
+[asan] Linking executable: /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3
+[cmd] clang /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3.o -o /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3 -L/home/origin/torch-mlir/build/lib -l mlir_c_runner_utils -l mlir_runner_utils -Wl,-rpath,/home/origin/torch-mlir/build/lib -Wl,-rpath,/home/origin/torch-mlir/build/lib -L/usr/lib/llvm-22/lib/clang/22/lib/linux -l:libclang_rt.asan-x86_64.so
+[asan] Executing /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3 ...
+[cmd] /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3
+[stderr]
+=================================================================
+==1114119==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x6f53384e000f at pc 0x5fdc31f24209 bp 0x7ffd846c1960 sp 0x7ffd846c1958
+WRITE of size 1 at 0x6f53384e000f thread T0
+    #0 0x5fdc31f24208 in f (/home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3+0x1208) (BuildId: ff13dd6ef442973ea46342bf24f0a4c9f17405dc)
+    #1 0x5fdc31f24275 in main (/home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3+0x1275) (BuildId: ff13dd6ef442973ea46342bf24f0a4c9f17405dc)
+    #2 0x733339629d8f in __libc_start_call_main csu/../sysdeps/nptl/libc_start_call_main.h:58:16
+    #3 0x733339629e3f in __libc_start_main csu/../csu/libc-start.c:392:3
+    #4 0x5fdc31f240c4 in _start (/home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3+0x10c4) (BuildId: ff13dd6ef442973ea46342bf24f0a4c9f17405dc)
+
+0x6f53384e000f is located 1 bytes before 8-byte region [0x6f53384e0010,0x6f53384e0018)
+allocated by thread T0 here:
+    #0 0x733339b4a974 in malloc (/usr/lib/llvm-22/lib/clang/22/lib/linux/libclang_rt.asan-x86_64.so+0x14a974) (BuildId: 597caba01c25436b65af4bc7593fc367b89fecae)
+    #1 0x5fdc31f241be in f (/home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3+0x11be) (BuildId: ff13dd6ef442973ea46342bf24f0a4c9f17405dc)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output/linear_ooba_heap_heap_non_object_underflow_direct_write_3+0x1208) (BuildId: ff13dd6ef442973ea46342bf24f0a4c9f17405dc) in f
+Shadow bytes around the buggy address:
+  0x6f53384dfd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x6f53384dfe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x6f53384dfe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x6f53384dff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x6f53384dff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x6f53384e0000: fa[fa]00 fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6f53384e0080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6f53384e0100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6f53384e0180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6f53384e0200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x6f53384e0280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==1114119==ABORTING
+
+[asan] Exit code: 1
+[asan] Cleaning up intermediates in /home/origin/MSET/linear_ooba_heap_heap_non_object_underflow_direct_write_3_output
+
+--- stderr ---
+

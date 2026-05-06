@@ -128,4 +128,10 @@ public:
     bool needs_strided = false,
     const std::string &offset = "0"
   ) const override;
+
+  std::vector<std::string> generate_llvm_ptr(
+    std::shared_ptr<AccessAction> action,
+    const std::string &llvm_ptr_var_name,
+    size_t size
+  ) const override;
 };

@@ -14,6 +14,9 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   memref.global @target_address : memref<1xindex>
   memref.global @target_ptr : memref<1xmemref<8xi8>>
   func.func private @exit(%arg0: i32) -> ()
@@ -53,6 +56,8 @@ module {
     %saved_ptr = memref.load %global_ptr_access[%c0] : memref<1xmemref<8xi8>>
     %read_value_39 = memref.alloca() : memref<8xi8>
     memref.copy %saved_ptr, %read_value_39 : memref<8xi8> to memref<8xi8>
+    %use_val_read_value_39 = memref.load %read_value_39[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_39) : (i8) -> ()
 
     return %c0_i32 : i32
   }

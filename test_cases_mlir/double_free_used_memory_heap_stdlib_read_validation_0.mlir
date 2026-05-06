@@ -14,12 +14,15 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
-  func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
+  %c0 = arith.constant 0 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
@@ -31,6 +34,8 @@ module {
     
   %read_value_2 = memref.alloca() : memref<8xi8>
   memref.copy %pointer_to_use, %read_value_2 : memref<8xi8> to memref<8xi8>
+  %use_val_read_value_2 = memref.load %read_value_2[%c0] : memref<8xi8>
+  func.call @use(%use_val_read_value_2) : (i8) -> ()
   func.call @exit(%test_success) : (i32) -> ()
 
     memref.dealloc %target : memref<8xi8>

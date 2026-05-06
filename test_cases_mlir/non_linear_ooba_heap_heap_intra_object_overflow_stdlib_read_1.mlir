@@ -15,6 +15,9 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -43,6 +46,8 @@ module {
     %read_value_183 = memref.alloca() : memref<8xi8>
     %src_slice = memref.subview %s_origin[%distance][8][1] : memref<8xi8, strided<[1], offset: 8>> to memref<8xi8, strided<[1], offset: ?>>
     memref.copy %src_slice, %read_value_183 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>
+    %use_val_read_value_183 = memref.load %read_value_183[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_183) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
     memref.dealloc %s : memref<16xi8>

@@ -99,22 +99,22 @@ def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
     if crisp or asan:
         passes.append("func.func(asan-lifecycle-instrument)")
 
-    # Lower linalg to loops, then affine
-    passes.extend([
-        "func.func(convert-linalg-to-loops)",
-        "func.func(lower-affine)",
-        "canonicalize",
-    ])
+    # # Lower linalg to loops, then affine
+    # passes.extend([
+    #     "func.func(convert-linalg-to-loops)",
+    #     "func.func(lower-affine)",
+    #     "canonicalize",
+    # ])
 
     # CRISP optimization passes (only for crisp config)
     if crisp:
         passes.extend([
             "asan-optimization",
+            "func.func(asan-static-check)",
             "asan-check-elimination",
             "canonicalize",
             "asan-hoist-check",
             "canonicalize",
-            "func.func(asan-static-check)",
             "func.func(asan-writeback-elimination)",
         ])
 

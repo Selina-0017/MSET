@@ -36,7 +36,8 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > NonObject::generate(
   std::shared_ptr<RegionCodeCanvas> origin_canvas = origin->generate(canvas_ptr, "origin", origin_size, true);
 
   // overflow variant: target after origin
-  ssize_t distance_up = static_cast<ssize_t>(origin_size);
+  ssize_t distance_up_static = static_cast<ssize_t>(origin_size);
+  ssize_t distance_up = distance_up_static + 1;
   origin_canvas->add_to_f_body(
     "%distance = arith.constant " + std::to_string(distance_up) + " : index"
   );
@@ -46,14 +47,14 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > NonObject::generate(
 
   auto variant = std::make_shared<OriginTargetCodeCanvas>(
     origin_canvas, origin_size, origin_size, "origin", "origin",
-    "distance", "distance_negated", /*is_target_allocated=*/false, false, distance_up
+    "distance", "distance_negated", /*is_target_allocated=*/false, false, distance_up_static
   );
   variant->set_lifetime_pos(origin_canvas->get_lifetime_pos());
   variant->add_variant_description_line("target after origin (overflow)");
   variants.push_back(variant);
 
   // underflow variant: target before origin
-  ssize_t distance_down = static_cast<ssize_t>(origin_size);
+  ssize_t distance_down = static_cast<ssize_t>(origin_size) + 1;
   origin_canvas->add_to_f_body(
     "%underflow_dist = arith.constant " + std::to_string(distance_down) + " : index"
   );

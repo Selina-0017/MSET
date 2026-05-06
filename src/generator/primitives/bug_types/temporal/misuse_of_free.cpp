@@ -45,7 +45,12 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >MisuseOfFree::generate(
     memref.store %c0x40, %target[%c104] : memref<160xi8>
     %crafted = memref.subview %target[16][8][1] : memref<160xi8> to memref<8xi8, strided<[1], offset: 16>>
     %_ = memref.alloc() : memref<8xi8>
-    memref.dealloc %crafted : memref<8xi8, strided<[1], offset: 16>>
+    %target_ptr_free = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index
+    %c16_free = arith.constant 16 : index
+    %crafted_addr_free = arith.addi %target_ptr_free, %c16_free : index
+    %crafted_i64_free = arith.index_cast %crafted_addr_free : index to i64
+    %crafted_llvm_free = llvm.inttoptr %crafted_i64_free : i64 to !llvm.ptr
+    llvm.call @free(%crafted_llvm_free) : (!llvm.ptr) -> ()
 
     %heap_obj = memref.alloc() : memref<8xi8>
 
@@ -59,6 +64,7 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >MisuseOfFree::generate(
 
   CodeCanvas code;
   code.add_global("func.func private @exit(%arg0: i32) -> ()");
+  code.add_global("llvm.func @free(!llvm.ptr) -> ()");
 
   code.add_test_case_description_line("Memory region: " + memory_region->get_name());
   code.add_test_case_description_line("Bug type: misuse-of-free, " + memory_state->get_printable_name());
@@ -82,7 +88,12 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >MisuseOfFree::generate(
       "memref.store %c0x40, %target[%c104_mof] : memref<160xi8>",
       "%crafted = memref.subview %target[16][8][1] : memref<160xi8> to memref<8xi8, strided<[1], offset: 16>>",
       "%_ = memref.alloc() : memref<8xi8>",
-      "memref.dealloc %crafted : memref<8xi8, strided<[1], offset: 16>>",
+      "%target_ptr_free = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index",
+      "%c16_free = arith.constant 16 : index",
+      "%crafted_addr_free = arith.addi %target_ptr_free, %c16_free : index",
+      "%crafted_i64_free = arith.index_cast %crafted_addr_free : index to i64",
+      "%crafted_llvm_free = llvm.inttoptr %crafted_i64_free : i64 to !llvm.ptr",
+      "llvm.call @free(%crafted_llvm_free) : (!llvm.ptr) -> ()",
       "",
       "%heap_obj = memref.alloc() : memref<8xi8>"
     });
@@ -100,7 +111,8 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >MisuseOfFree::generate(
         // unused heap memory: conditionally dealloc target, access is outside if
         std::vector<std::string> cmp_and_if = {
           "%target_addr_cmp = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index",
-          "%crafted_addr_cmp = memref.extract_aligned_pointer_as_index %crafted : memref<8xi8, strided<[1], offset: 16>> -> index",
+          "%c16_cmp = arith.constant 16 : index",
+          "%crafted_addr_cmp = arith.addi %target_addr_cmp, %c16_cmp : index",
           "%eq_cmp = arith.cmpi eq, %target_addr_cmp, %crafted_addr_cmp : index",
           "scf.if %eq_cmp {"
         };

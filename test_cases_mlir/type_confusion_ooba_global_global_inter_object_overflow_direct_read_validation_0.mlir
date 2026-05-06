@@ -16,27 +16,31 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32)
-  memref.global @parent : memref<68xi8> = dense<170>
+  memref.global @parent : memref<451xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 60 : index
+    %distance = arith.constant 443 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.get_global @parent : memref<68xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<68xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[60][8][1] : memref<68xi8> to memref<8xi8, strided<[1], offset: 60>>
+    %parent = memref.get_global @parent : memref<451xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<451xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[443][8][1] : memref<451xi8> to memref<8xi8, strided<[1], offset: 443>>
     %distance_negated = arith.subi %c0, %distance : index
     scf.for %j = %c0 to %c8 step %c1 {
       %idx = arith.addi %j, %c0 : index
-      %val = memref.load %parent_target[%idx] : memref<8xi8, strided<[1], offset: 60>>
+      %val = memref.load %parent_target[%idx] : memref<8xi8, strided<[1], offset: 443>>
+      func.call @use(%val) : (i8) -> ()
     }
     func.call @exit(%test_success) : (i32) -> ()
 

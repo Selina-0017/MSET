@@ -174,7 +174,7 @@ void generate(const std::string& dir_path)
   size_t temporal_generated_counter = 0;
   for ( auto temporal_bug_type: temporal_bug_types )
   {
-    std::cerr << "[DEBUG] Temporal bug type: " << temporal_bug_type->get_name() << std::endl;
+    // std::cerr << "[DEBUG] Temporal bug type: " << temporal_bug_type->get_name() << std::endl;
     for ( auto memory_state: memory_states )
     {
       if ( !temporal_bug_type->accepts(memory_state) )
@@ -184,7 +184,7 @@ void generate(const std::string& dir_path)
 
       for ( auto memory_region: memory_regions )
       {
-        std::cerr << "[DEBUG]   Region: " << memory_region->get_name() << std::endl;
+        // std::cerr << "[DEBUG]   Region: " << memory_region->get_name() << std::endl;
         if ( !memory_state->accepts(memory_region) )
         {
           continue;
@@ -198,7 +198,7 @@ void generate(const std::string& dir_path)
         {
           for ( auto access_location: access_type_locations )
           {
-            std::cerr << "[DEBUG]     Generating: " << access_action->get_name() << " / " << access_location->get_name() << std::endl;
+            // std::cerr << "[DEBUG]     Generating: " << access_action->get_name() << " / " << access_location->get_name() << std::endl;
             std::vector< std::shared_ptr<RegionCodeCanvas> > code_canvas_variants = temporal_bug_type->generate(memory_state, memory_region, access_action, access_location);
             std::string file_name = build_file_name(temporal_bug_type, memory_state, memory_region, access_action, access_location);
             size_t variant_index = 0;
@@ -228,7 +228,7 @@ void generate(const std::string& dir_path)
   size_t spatial_generated_counter = 0;
   for ( auto spatial_bug_type: spatial_bug_types )
   {
-    std::cerr << "[DEBUG] Spatial bug type: " << spatial_bug_type->get_name() << std::endl;
+    // std::cerr << "[DEBUG] Spatial bug type: " << spatial_bug_type->get_name() << std::endl;
     for ( auto flow: flows )
     {
       if ( !spatial_bug_type->accepts(flow) )
@@ -263,7 +263,7 @@ void generate(const std::string& dir_path)
                 {
                   continue;
                 }
-                std::cerr << "[DEBUG]     Generating spatial: " << access_action->get_name() << " / " << access_location->get_name() << std::endl;
+                // std::cerr << "[DEBUG]     Generating spatial: " << access_action->get_name() << " / " << access_location->get_name() << std::endl;
                 std::vector< std::shared_ptr<OriginTargetCodeCanvas> > code_canvas_variants = spatial_bug_type->generate(
                   origin, target, origin_target_relation,
                   flow,

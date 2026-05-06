@@ -18,15 +18,17 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
-  func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }
-  memref.global @parent : memref<564xi8> = dense<170>
+  memref.global @parent : memref<730xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 556 : index
+    %distance = arith.constant 722 : index
     %c1 = arith.constant 1 : index
     %c0xFF = arith.constant 255 : i8
     %c8 = arith.constant 8 : index
@@ -34,10 +36,14 @@ module {
     // locals
 
 
-    %parent = memref.get_global @parent : memref<564xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<564xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[556][8][1] : memref<564xi8> to memref<8xi8, strided<[1], offset: 556>>
+    %parent = memref.get_global @parent : memref<730xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<730xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[722][8][1] : memref<730xi8> to memref<8xi8, strided<[1], offset: 722>>
     %distance_negated = arith.subi %c0, %distance : index
+    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 722>>
+    func.call @use(%use_val_parent_target) : (i8) -> ()
+    %use_val_parent_origin = memref.load %parent_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%use_val_parent_origin) : (i8) -> ()
     scf.for %i = %c0 to %distance step %c1 {
       memref.store %c0xFF, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
     }

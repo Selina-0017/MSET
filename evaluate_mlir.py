@@ -427,10 +427,10 @@ def signal_name(returncode: int) -> str:
     return signal.Signals(sig_num).name if hasattr(signal, "Signals") else f"SIG{sig_num}"
 
 
-def run_single_test(mlir_path: str, config: str, output_dir: str, timeout: int) -> Tuple[int, bool, str]:
+def run_single_test(mlir_path: str, config: str, output_dir: str, timeout: int) -> Tuple[int, bool, str, str]:
     """
     Run crisp_phase2.py on a single MLIR file.
-    Returns (returncode, timed_out, stderr_output).
+    Returns (returncode, timed_out, stdout_output, stderr_output).
     """
     cmd = [
         sys.executable,
@@ -450,16 +450,22 @@ def run_single_test(mlir_path: str, config: str, output_dir: str, timeout: int) 
             timeout=timeout,
             env=env,
         )
-        return result.returncode, False, result.stderr
+        return result.returncode, False, result.stdout, result.stderr
     except subprocess.TimeoutExpired as e:
+        stdout_out = e.stdout.decode() if e.stdout else ""
         stderr_out = e.stderr.decode() if e.stderr else ""
-        return -1, True, stderr_out
+        return -1, True, stdout_out, stderr_out
 
 
-def classify_result(returncode: int, timed_out: bool, stderr: str) -> ExecResult:
+def classify_result(returncode: int, timed_out: bool, stdout: str, stderr: str) -> ExecResult:
     """Map crisp_phase2.py return code to ExecResult."""
     if timed_out:
         return ExecResult.UNDETECTED_TIMEOUT
+
+    # Check both stdout and stderr because crisp_phase2.py may re-print child stderr into its stdout
+    if "warning: Index out of bounds" in stdout or "warning: Index out of bounds" in stderr:
+        # print("[√] MLIR pass detected out-of-bounds access at compile time.")
+        return ExecResult.DETECTED
 
     # Process was killed by a signal (e.g., OOM killer -> SIGKILL)
     if is_killed_by_signal(returncode):
@@ -475,6 +481,7 @@ def classify_result(returncode: int, timed_out: bool, stderr: str) -> ExecResult
 
     if returncode == 43:
         return ExecResult.PRECONDITIONS_FAILED
+
     if returncode == 42 or returncode == 0:
         return ExecResult.UNDETECTED
 
@@ -789,15 +796,15 @@ def evaluate_all(
             out_dir = str(tmp_base / f"{test_config}_{tc.file_name_without_suffix}")
             work_items.append((test_config, tc, out_dir))
 
-            # Baseline only runs non-validation variants
-            if not tc.is_validation:
+            # Baseline only runs non-validation variants, and only when it differs from test config
+            if not tc.is_validation and baseline_config != test_config:
                 out_dir = str(tmp_base / f"{baseline_config}_{tc.file_name_without_suffix}")
                 work_items.append((baseline_config, tc, out_dir))
 
     print(f"Total work items: {len(work_items)}")
 
     # Execute in parallel
-    results_map: Dict[Tuple[str, str], Tuple[int, bool, str]] = {}
+    results_map: Dict[Tuple[str, str], Tuple[int, bool, str, str]] = {}
 
     with ProcessPoolExecutor(max_workers=jobs) as executor:
         future_to_work = {}
@@ -809,15 +816,15 @@ def evaluate_all(
         for future in as_completed(future_to_work):
             config, tc = future_to_work[future]
             try:
-                returncode, timed_out, stderr = future.result()
+                returncode, timed_out, stdout, stderr = future.result()
             except Exception as e:
                 print(f"ERROR executing {tc.file_path} with {config}: {e}")
-                returncode, timed_out, stderr = -1, False, str(e)
+                returncode, timed_out, stdout, stderr = -1, False, str(e), ""
 
-            results_map[(config, tc.file_path)] = (returncode, timed_out, stderr)
+            results_map[(config, tc.file_path)] = (returncode, timed_out, stdout, stderr)
             completed += 1
             if verbose:
-                res = classify_result(returncode, timed_out, stderr)
+                res = classify_result(returncode, timed_out, stdout, stderr)
                 print(f"[{completed}/{len(work_items)}] {config}: {tc.file_name} -> {res}")
 
     # Collect results
@@ -835,21 +842,21 @@ def evaluate_all(
 
         for tc in variants:
             if tc.is_validation:
-                rc, to, stderr = results_map.get((test_config, tc.file_path), (-1, False, ""))
-                res = classify_result(rc, to, stderr)
+                rc, to, stdout, stderr = results_map.get((test_config, tc.file_path), (-1, False, "", ""))
+                res = classify_result(rc, to, stdout, stderr)
                 # Validation must be UNDETECTED; anything else invalidates the test case
                 if res != ExecResult.UNDETECTED:
                     group_results.append(ExecResult.INVALID)
             else:
-                rc_base, to_base, stderr_base = results_map.get(
-                    (baseline_config, tc.file_path), (-1, False, "")
+                rc_base, to_base, stdout_base, stderr_base = results_map.get(
+                    (baseline_config, tc.file_path), (-1, False, "", "")
                 )
-                res_base = classify_result(rc_base, to_base, stderr_base)
+                res_base = classify_result(rc_base, to_base, stdout_base, stderr_base)
 
-                rc_test, to_test, stderr_test = results_map.get(
-                    (test_config, tc.file_path), (-1, False, "")
+                rc_test, to_test, stdout_test, stderr_test = results_map.get(
+                    (test_config, tc.file_path), (-1, False, "", "")
                 )
-                res_test = classify_result(rc_test, to_test, stderr_test)
+                res_test = classify_result(rc_test, to_test, stdout_test, stderr_test)
 
                 group_baseline_results.append(res_base)
                 group_results.append(res_test)
@@ -869,18 +876,18 @@ def evaluate_all(
             raw_temporal_results["all"].append(overall)
             raw_overall_results.append(overall)
 
-            raw_temporal_baseline[t.temporal_bug_name].append(overall_base)
-            raw_temporal_baseline[t.temporal_memory_state_name].append(overall_base)
-            raw_temporal_baseline[t.region_name].append(overall_base)
-            raw_temporal_baseline[t.access_location_name].append(overall_base)
-            raw_temporal_baseline[t.access_action_name].append(overall_base)
-            raw_temporal_baseline["all"].append(overall_base)
-            raw_overall_baseline.append(overall_base)
+            # raw_temporal_baseline[t.temporal_bug_name].append(overall_base)
+            # raw_temporal_baseline[t.temporal_memory_state_name].append(overall_base)
+            # raw_temporal_baseline[t.region_name].append(overall_base)
+            # raw_temporal_baseline[t.access_location_name].append(overall_base)
+            # raw_temporal_baseline[t.access_action_name].append(overall_base)
+            # raw_temporal_baseline["all"].append(overall_base)
+            # raw_overall_baseline.append(overall_base)
 
-            if overall != overall_base:
+            if overall != ExecResult.DETECTED:
                 print(
                     f"For {t.get_test_case_key()}, the overall result is {overall_result_to_string(overall)} "
-                    f"(Baseline: {overall_result_to_string(overall_base)})."
+                    # f"(Baseline: {overall_result_to_string(overall_base)})."
                 )
         else:
             s = tc0
@@ -894,20 +901,20 @@ def evaluate_all(
             raw_spatial_results["all"].append(overall)
             raw_overall_results.append(overall)
 
-            raw_spatial_baseline["origin " + s.origin_name].append(overall_base)
-            raw_spatial_baseline["target " + s.target_name].append(overall_base)
-            raw_spatial_baseline[s.origin_target_relation_name].append(overall_base)
-            raw_spatial_baseline[s.flow_name].append(overall_base)
-            raw_spatial_baseline[s.spatial_bug_name].append(overall_base)
-            raw_spatial_baseline[s.access_location_name].append(overall_base)
-            raw_spatial_baseline[s.access_action_name].append(overall_base)
-            raw_spatial_baseline["all"].append(overall_base)
-            raw_overall_baseline.append(overall_base)
+            # raw_spatial_baseline["origin " + s.origin_name].append(overall_base)
+            # raw_spatial_baseline["target " + s.target_name].append(overall_base)
+            # raw_spatial_baseline[s.origin_target_relation_name].append(overall_base)
+            # raw_spatial_baseline[s.flow_name].append(overall_base)
+            # raw_spatial_baseline[s.spatial_bug_name].append(overall_base)
+            # raw_spatial_baseline[s.access_location_name].append(overall_base)
+            # raw_spatial_baseline[s.access_action_name].append(overall_base)
+            # raw_spatial_baseline["all"].append(overall_base)
+            # raw_overall_baseline.append(overall_base)
 
-            if overall != overall_base:
+            if overall != ExecResult.DETECTED:
                 print(
                     f"For {s.get_test_case_key()}, the overall result is {overall_result_to_string(overall)} "
-                    f"(Baseline: {overall_result_to_string(overall_base)})."
+                    # f"(Baseline: {overall_result_to_string(overall_base)})."
                 )
 
     print(f"Evaluated {total_groups} test cases, {evaluated_variants} variants.")
@@ -984,8 +991,9 @@ def main():
     )
     args = parser.parse_args()
 
-    with_baseline = not args.no_baseline
-    baseline_cfg = args.baseline_config if with_baseline else args.test_config
+    with_baseline = False
+    # baseline_cfg = args.baseline_config if with_baseline else args.test_config
+    baseline_cfg = args.test_config
 
     (
         raw_temporal,

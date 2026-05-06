@@ -17,6 +17,9 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -31,7 +34,7 @@ module {
     %c24_i32 = arith.constant 24 : i32
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-    %distance = arith.constant 8 : index
+    %distance = arith.constant 9 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
@@ -41,14 +44,19 @@ module {
     }
     scf.for %i = %c0 to %distance step %c1 {
       %val = memref.load %origin[%i] : memref<8xi8>
+      func.call @use(%val) : (i8) -> ()
     }
     %b0 = memref.load %origin[%distance] : memref<8xi8>
+    func.call @use(%b0) : (i8) -> ()
     %idx1 = arith.addi %distance, %c1 : index
     %b1 = memref.load %origin[%idx1] : memref<8xi8>
+    func.call @use(%b1) : (i8) -> ()
     %idx2 = arith.addi %distance, %c2 : index
     %b2 = memref.load %origin[%idx2] : memref<8xi8>
+    func.call @use(%b2) : (i8) -> ()
     %idx3 = arith.addi %distance, %c3 : index
     %b3 = memref.load %origin[%idx3] : memref<8xi8>
+    func.call @use(%b3) : (i8) -> ()
     %b0_i32 = arith.extui %b0 : i8 to i32
     %b1_i32 = arith.extui %b1 : i8 to i32
     %b2_i32 = arith.extui %b2 : i8 to i32

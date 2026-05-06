@@ -14,13 +14,15 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
-  func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-  %c0 = arith.constant 0 : index
+    %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
   %c8 = arith.constant 8 : index
   %c0xFF = arith.constant 255 : i8
@@ -35,6 +37,10 @@ module {
     memref.dealloc %tmp : memref<8xi8> // no use after free required
     %pointer_to_use = memref.alloc() : memref<8xi8> // allocate a new object
     %tmp3 = memref.alloc() : memref<8xi8>
+    %use_val_tmp2 = memref.load %tmp2[%c0] : memref<8xi8>
+    func.call @use(%use_val_tmp2) : (i8) -> ()
+    %use_val_tmp3 = memref.load %tmp3[%c0] : memref<8xi8>
+    func.call @use(%use_val_tmp3) : (i8) -> ()
     %target = memref.alloc() : memref<8xi8>
     
   scf.for %i = %c0 to %c8 step %c1 {

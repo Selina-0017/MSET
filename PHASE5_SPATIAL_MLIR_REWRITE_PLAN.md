@@ -73,7 +73,7 @@ return {
 ```cpp
 std::string distance_ssa_name;         // e.g. "distance"
 std::string distance_negated_ssa_name; // e.g. "distance_negated"
-ssize_t distance_static_value;         // e.g. 137 (生成期已知，用于 C++ 判断)
+ssize_t distance_static_value;         // e.g. 
 ```
 
 **`InterObject::generate`**：
@@ -162,16 +162,6 @@ scf.for %j = %c0 to %c8 step %c1 {
 
 **移除**：`struct BigType`、C 类型转换、`MAX_OBJECT_SIZE`
 
-**BigType cast 变体**：对 **origin** 做 `reinterpret_cast`，将其"看大"为覆盖整个 parent：
-```mlir
-//假设生成的rand为137，所以总size是137 + 8 + 8 = 153.实际实现过程不可以硬编码
-%parent = memref.alloc() : memref<153xi8>
-%origin = memref.subview %parent[0][8][1] : memref<153xi8> to memref<8xi8>
-
-%big_origin = memref.reinterpret_cast %origin to offset: [0], sizes: [153], strides: [1] 
-                : memref<8xi8> to memref<153xi8>
-%val = memref.load %big_origin[%distance] : memref<153xi8>
-```
 
 **Load widening 变体**：复用 `DirectLocation::generate_uint32`
 

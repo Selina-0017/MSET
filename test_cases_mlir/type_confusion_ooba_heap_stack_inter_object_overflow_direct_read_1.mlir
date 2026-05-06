@@ -16,6 +16,9 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -26,7 +29,7 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 669 : index
+    %distance = arith.constant 752 : index
     %c2 = arith.constant 2 : index
     %c3 = arith.constant 3 : index
     %c8_i32 = arith.constant 8 : i32
@@ -37,23 +40,27 @@ module {
     // locals
 
 
-    %parent = memref.alloc() : memref<677xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<677xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[669][8][1] : memref<677xi8> to memref<8xi8, strided<[1], offset: 669>>
+    %parent = memref.alloc() : memref<760xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<760xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[752][8][1] : memref<760xi8> to memref<8xi8, strided<[1], offset: 752>>
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 669>>
+      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 752>>
     }
     %distance_negated = arith.subi %c0, %distance : index
     %b0 = memref.load %parent_origin[%base] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%b0) : (i8) -> ()
     %idx1 = arith.addi %base, %c1 : index
     %b1 = memref.load %parent_origin[%idx1] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%b1) : (i8) -> ()
     %idx2 = arith.addi %base, %c2 : index
     %b2 = memref.load %parent_origin[%idx2] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%b2) : (i8) -> ()
     %idx3 = arith.addi %base, %c3 : index
     %b3 = memref.load %parent_origin[%idx3] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%b3) : (i8) -> ()
     %b0_i32 = arith.extui %b0 : i8 to i32
     %b1_i32 = arith.extui %b1 : i8 to i32
     %b2_i32 = arith.extui %b2 : i8 to i32
@@ -66,7 +73,7 @@ module {
     %val = arith.ori %acc0, %acc1 : i32
     func.call @exit(%test_success) : (i32) -> ()
 
-    memref.dealloc %parent : memref<677xi8>
+    memref.dealloc %parent : memref<760xi8>
     return %c0_i32 : i32
   }
 

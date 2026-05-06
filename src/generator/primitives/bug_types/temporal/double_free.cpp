@@ -62,7 +62,7 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >DoubleFree::generate(
   variant_with_use_after_free.add_variant_description_line("with use-after-free");
 
   variant_with_use_after_free.add_global("func.func private @exit(%arg0: i32)  -> ()");
-  variant_with_use_after_free.add_global("func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }");
+  // use function is provided by CodeCanvas by default
   variant_with_use_after_free.add_to_f_body({
     "%c8_df = arith.constant 8 : index",
     "%c0_i8_df = arith.constant 0 : i8",
@@ -89,8 +89,9 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >DoubleFree::generate(
 
   variant_without_use_after_free.add_variant_description_line("without use-after-free");
   variant_without_use_after_free.add_global("func.func private @exit(%arg0: i32) -> ()");
-  variant_without_use_after_free.add_global("func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }");
+  // use function is provided by CodeCanvas by default
   variant_without_use_after_free.add_to_f_body({
+    "%c0 = arith.constant 0 : index",
     "%tmp = memref.alloc() : memref<8xi8>",
     "%tmp2 = memref.alloc() : memref<8xi8>",
     "%pointer_to_double_free = memref.alloc() : memref<8xi8> // pointer to be double-freed",
@@ -98,9 +99,11 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >DoubleFree::generate(
     "memref.dealloc %tmp : memref<8xi8> // no use after free required",
     "memref.dealloc %pointer_to_double_free : memref<8xi8> // double free",
     "%pointer_to_use = memref.alloc() : memref<8xi8> // allocate a new object",
-    "%tmp3 = memref.alloc() : memref<8xi8>"
-    // "func.call @use(%tmp2) : (memref<8xi8>) -> ()",
-    // "func.call @use(%tmp3) : (memref<8xi8>) -> ()"
+    "%tmp3 = memref.alloc() : memref<8xi8>",
+    "%use_val_tmp2 = memref.load %tmp2[%c0] : memref<8xi8>",
+    "func.call @use(%use_val_tmp2) : (i8) -> ()",
+    "%use_val_tmp3 = memref.load %tmp3[%c0] : memref<8xi8>",
+    "func.call @use(%use_val_tmp3) : (i8) -> ()"
   });
 
   region_canvas = memory_region->generate(std::make_shared<CodeCanvas>(variant_without_use_after_free), "target", 8, false);
@@ -141,7 +144,7 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >DoubleFree::generate_validation(
   variant_with_use_after_free.add_variant_description_line("with use-after-free");
 
   variant_with_use_after_free.add_global("func.func private @exit(%arg0: i32) -> ()");
-  variant_with_use_after_free.add_global("func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }");
+  // use function is provided by CodeCanvas by default
   variant_with_use_after_free.add_to_f_body({
     "%pointer_to_double_free = memref.alloc() : memref<10xi8> // pointer to be double-freed",
     "memref.dealloc %pointer_to_double_free : memref<10xi8>",
@@ -164,18 +167,21 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >DoubleFree::generate_validation(
 
   variant_without_use_after_free.add_variant_description_line("without use-after-free");
   variant_without_use_after_free.add_global("func.func private @exit(%arg0: i32) -> ()");
-  variant_without_use_after_free.add_global("func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }");
+  // use function is provided by CodeCanvas by default
 
   variant_without_use_after_free.add_to_f_body({
+    "%c0 = arith.constant 0 : index",
     "%tmp = memref.alloc() : memref<8xi8>",
     "%tmp2 = memref.alloc() : memref<8xi8>",
     "%pointer_to_double_free = memref.alloc() : memref<8xi8> // pointer to be double-freed",
     "memref.dealloc %pointer_to_double_free : memref<8xi8>",
     "memref.dealloc %tmp : memref<8xi8> // no use after free required",
     "%pointer_to_use = memref.alloc() : memref<8xi8> // allocate a new object",
-    "%tmp3 = memref.alloc() : memref<8xi8>"
-    // "func.call @use(%tmp2) : (memref<8xi8>) -> ()",
-    // "func.call @use(%tmp3) : (memref<8xi8>) -> ()"
+    "%tmp3 = memref.alloc() : memref<8xi8>",
+    "%use_val_tmp2 = memref.load %tmp2[%c0] : memref<8xi8>",
+    "func.call @use(%use_val_tmp2) : (i8) -> ()",
+    "%use_val_tmp3 = memref.load %tmp3[%c0] : memref<8xi8>",
+    "func.call @use(%use_val_tmp3) : (i8) -> ()"
   });
 
   region_canvas = memory_region->generate(std::make_shared<CodeCanvas>(variant_without_use_after_free), "target", 8, false);

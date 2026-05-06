@@ -32,7 +32,7 @@
 #endif
 
 volatile void *_use(volatile void *p) { return p; }
-const char content[8] = "ZZZZZZZ";
+const char content[8] = {'Z','Z','Z','Z','Z','Z','Z','\0'};
 
 // types
 
@@ -49,8 +49,8 @@ int f()
 
   _use(target);
   _use(origin);
-  if ( GET_ADDR_BITS(&reach_index) < GET_ADDR_BITS(origin) && GET_ADDR_BITS(&reach_index) > GET_ADDR_BITS(target) ) _exit(PRECONDITIONS_FAILED_VALUE);
-  if ( !((ssize_t)(GET_ADDR_BITS(target) - GET_ADDR_BITS(origin)) <= 0) ) _exit(PRECONDITIONS_FAILED_VALUE);
+  if ( GET_ADDR_BITS(&reach_index) < GET_ADDR_BITS(origin) && GET_ADDR_BITS(&reach_index) > GET_ADDR_BITS(target) ) _exit(43);
+  if ( !((ssize_t)(GET_ADDR_BITS(target) - GET_ADDR_BITS(origin)) <= 0) ) _exit(43);
   while( GET_ADDR_BITS(&origin[reach_index]) != GET_ADDR_BITS(target) )
   {
     origin[reach_index] = 0xFF;
@@ -64,7 +64,7 @@ int f()
     (origin + reach_index)[i] = content[i];
   }
   _use((origin + reach_index));
-  _exit(TEST_CASE_SUCCESSFUL_VALUE);
+  _exit(42);
 
   return 0;
 }

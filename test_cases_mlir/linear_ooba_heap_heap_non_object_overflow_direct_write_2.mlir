@@ -18,8 +18,10 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
-  func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
@@ -28,7 +30,7 @@ module {
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
-    %distance = arith.constant 8 : index
+    %distance = arith.constant 9 : index
     %c0xFF = arith.constant 255 : i8
       %__base = arith.constant 1 : index
     %c0_i32 = arith.constant 0 : i32
@@ -40,6 +42,8 @@ module {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
     %distance_negated = arith.subi %c0, %distance : index
+    %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
+    func.call @use(%use_val_origin) : (i8) -> ()
     scf.for %reach_index = %c0 to %distance step %c1 {
       memref.store %c0xFF, %origin[%reach_index] : memref<8xi8>
     }

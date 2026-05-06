@@ -53,19 +53,25 @@ AccessLocation::SplitAccess StdlibLocation::generate_split_aux_vars(
       std::string rv = get_unique_read_value_name();
       std::string strided_type = "memref<1x" + size_str + "xi8, strided<[" + size_str + ", 1], offset: ?>>";
       split_access.aux_variables = {
+        {"c0", "index", "", "0"},
         {rv, "memref<1x" + size_str + "xi8>", "", "memref.alloca() : memref<1x" + size_str + "xi8>"},
       };
       split_access.access_lines = {
         "%subview_tmp = memref.subview %" + access_var_name + "[%" + index_var + ", 0][1, " + size_str + "][1, 1] : memref<" + array_size_str + "x" + size_str + "xi8> to " + strided_type,
         "memref.copy %subview_tmp, %" + rv + " : " + strided_type + " to memref<1x" + size_str + "xi8>"
       };
+      split_access.access_lines.emplace_back("%use_val_" + rv + " = memref.load %" + rv + "[%c0, %c0] : memref<1x" + size_str + "xi8>");
+      split_access.access_lines.emplace_back("func.call @use(%use_val_" + rv + ") : (i8) -> ()");
     } else {
       std::string rv = get_unique_read_value_name();
       split_access.aux_variables = {
+        {"c0", "index", "", "0"},
         {rv, "memref<" + size_str + "xi8>", "", "memref.alloca() : memref<" + size_str + "xi8>"},
       };
       std::string src_type = needs_strided ? ("memref<" + size_str + "xi8, strided<[1], offset: "+ offset +">>") : ("memref<" + size_str + "xi8>");
       split_access.access_lines.push_back( "memref.copy %" + access_var_name + ", %" + rv + " : " + src_type + " to memref<" + size_str + "xi8>" );
+      split_access.access_lines.emplace_back("%use_val_" + rv + " = memref.load %" + rv + "[%c0] : memref<" + size_str + "xi8>");
+      split_access.access_lines.emplace_back("func.call @use(%use_val_" + rv + ") : (i8) -> ()");
     }
     split_access.result = access_var_name;
   }
@@ -82,12 +88,12 @@ AccessLocation::SplitAccess StdlibLocation::generate_split_aux_vars(
       std::string array_size_str = std::to_string(array_size);
       std::string type_suffix = needs_strided ? ", strided<[1], offset: " + offset + ">>" : ">";
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
-        split_access.access_lines.emplace_back("  memref.store %c0xFF, %" + access_var_name + "[%" + index_var + ", %i] : memref<" + array_size_str + "x" + size_str + "xi8" + type_suffix);
+      split_access.access_lines.emplace_back("  memref.store %c0xFF, %" + access_var_name + "[%" + index_var + ", %i] : memref<" + array_size_str + "x" + size_str + "xi8" + type_suffix);
       split_access.access_lines.emplace_back("}");
     } else {
       std::string type_suffix = needs_strided ? ", strided<[1], offset: " + offset + ">>" : ">";
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
-        split_access.access_lines.emplace_back("  memref.store %c0xFF, %" + access_var_name + "[%i] : memref<" + size_str + "xi8" + type_suffix);
+      split_access.access_lines.emplace_back("  memref.store %c0xFF, %" + access_var_name + "[%i] : memref<" + size_str + "xi8" + type_suffix);
       split_access.access_lines.emplace_back("}");
     }
     split_access.result = access_var_name;
@@ -109,19 +115,25 @@ AccessLocation::SplitAccess StdlibLocation::generate_split_const_vars(
       std::string rv = get_unique_read_value_name();
       std::string strided_type = "memref<1x" + size_str + "xi8, strided<[" + size_str + ", 1], offset: ?>>";
       split_access.aux_variables = {
+        {"c0", "index", "", "0"},
         {rv, "memref<1x" + size_str + "xi8>", "", "memref.alloca() : memref<1x" + size_str + "xi8>"},
       };
       split_access.access_lines = {
         "%subview_tmp = memref.subview %" + access_var_name + "[%" + index_var + ", 0][1, " + size_str + "][1, 1] : memref<" + array_size_str + "x" + size_str + "xi8> to " + strided_type,
         "memref.copy %subview_tmp, %" + rv + " : " + strided_type + " to memref<1x" + size_str + "xi8>"
       };
+      split_access.access_lines.emplace_back("%use_val_" + rv + " = memref.load %" + rv + "[%c0, %c0] : memref<1x" + size_str + "xi8>");
+      split_access.access_lines.emplace_back("func.call @use(%use_val_" + rv + ") : (i8) -> ()");
     } else {
       std::string rv = get_unique_read_value_name();
       split_access.aux_variables = {
+        {"c0", "index", "", "0"},
         {rv, "memref<" + size_str + "xi8>", "", "memref.alloca() : memref<" + size_str + "xi8>"},
       };
       std::string src_type = needs_strided ? ("memref<" + size_str + "xi8, strided<[1], offset: " + offset + ">>") : ("memref<" + size_str + "xi8>");
       split_access.access_lines.push_back( "memref.copy %" + access_var_name + ", %" + rv + " : " + src_type + " to memref<" + size_str + "xi8>" );
+      split_access.access_lines.emplace_back("%use_val_" + rv + " = memref.load %" + rv + "[%c0] : memref<" + size_str + "xi8>");
+      split_access.access_lines.emplace_back("func.call @use(%use_val_" + rv + ") : (i8) -> ()");
     }
     split_access.result = access_var_name;
   }
@@ -201,6 +213,8 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_index(
       "  memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>",
       "}",
     };
+    split_access.access_lines.emplace_back("%use_val_" + rv + " = memref.load %" + rv + "[%c0] : memref<1024xi8>");
+    split_access.access_lines.emplace_back("func.call @use(%use_val_" + rv + ") : (i8) -> ()");
     split_access.result = from;
   }
   else
@@ -268,6 +282,8 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_aux_ptr(
       "  memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>",
       "}",
     };
+    split_access.access_lines.emplace_back("%use_val_" + rv + " = memref.load %" + rv + "[%c0] : memref<1024xi8>");
+    split_access.access_lines.emplace_back("func.call @use(%use_val_" + rv + ") : (i8) -> ()");
     split_access.result = from;
   }
   else
@@ -311,9 +327,12 @@ std::vector<std::string> StdlibLocation::generate_at_index(
     // READ: memref.copy via subview
     std::string rv = get_unique_read_value_name();
     lines = {
+      "%c0 = arith.constant 0 : index",
       "%" + rv + " = memref.alloca() : memref<" + size_str + "xi8>",
       "%src_slice = memref.subview %" + access_var_name + "[%" + index + "][" + size_str + "][1] : " + src_type + " to " + dst_type,
       "memref.copy %src_slice, %" + rv + " : " + dst_type + " to memref<" + size_str + "xi8>",
+      "%use_val_" + rv + " = memref.load %" + rv + "[%c0] : memref<" + size_str + "xi8>",
+      "func.call @use(%use_val_" + rv + ") : (i8) -> ()",
     };
   }
   else
@@ -375,4 +394,40 @@ std::vector<std::string> StdlibLocation::generate_uint8(
 {
   assert(0 && "generate_uint8 not used for StdlibLocation");
   return {};
+}
+
+std::vector<std::string> StdlibLocation::generate_llvm_ptr(
+  std::shared_ptr<AccessAction> action,
+  const std::string &llvm_ptr_var_name,
+  size_t size
+) const
+{
+  std::vector<std::string> lines;
+  std::string size_str = std::to_string(size);
+  if (is_a<ReadAction>(action))
+  {
+    // READ: alloca temp buffer, get its !llvm.ptr, memcpy, then load first byte + @use
+    lines = {
+      "%c0 = arith.constant 0 : index",
+      "%c" + size_str + " = arith.constant " + size_str + " : index",
+      "%c" + size_str + "_i64 = arith.constant " + size_str + " : i64",
+      "%tmp_buf = memref.alloca() : memref<" + size_str + "xi8>",
+      "%tmp_idx = memref.extract_aligned_pointer_as_index %tmp_buf : memref<" + size_str + "xi8> -> index",
+      "%tmp_i64 = arith.index_cast %tmp_idx : index to i64",
+      "%tmp_ptr = llvm.inttoptr %tmp_i64 : i64 to !llvm.ptr",
+      "func.call @memcpy(%tmp_ptr, %" + llvm_ptr_var_name + ", %c" + size_str + "_i64) : (!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr",
+      "%use_val = memref.load %tmp_buf[%c0] : memref<" + size_str + "xi8>",
+      "func.call @use(%use_val) : (i8) -> ()"
+    };
+  }
+  else
+  {
+    // WRITE: func.call @memset
+    lines = {
+      "%c0xFF_i32 = arith.constant 255 : i32",
+      "%c" + size_str + "_i64 = arith.constant " + size_str + " : i64",
+      "func.call @memset(%" + llvm_ptr_var_name + ", %c0xFF_i32, %c" + size_str + "_i64) : (!llvm.ptr, i32, i64) -> !llvm.ptr"
+    };
+  }
+  return lines;
 }

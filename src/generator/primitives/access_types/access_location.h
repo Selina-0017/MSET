@@ -241,4 +241,14 @@ public:
     bool needs_strided = false,
     const std::string &offset = "0"
   ) const = 0;
+
+  // Generate access code using !llvm.ptr instead of memref.
+  // The generated code operates on a variable of type !llvm.ptr.
+  // Callers must ensure required external functions (e.g., @memset, @memcpy)
+  // are declared in the global scope when using StdlibLocation.
+  virtual std::vector<std::string> generate_llvm_ptr(
+    std::shared_ptr<AccessAction> action,
+    const std::string &llvm_ptr_var_name,
+    size_t size
+  ) const = 0;
 };

@@ -17,14 +17,17 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<218xi8> = dense<170>
+  memref.global @parent : memref<694xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 210 : index
+    %distance = arith.constant 686 : index
     %c1 = arith.constant 1 : index
     %c2 = arith.constant 2 : index
     %c3 = arith.constant 3 : index
@@ -35,20 +38,25 @@ module {
     // locals
 
 
-    %parent = memref.get_global @parent : memref<218xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<218xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[210][8][1] : memref<218xi8> to memref<8xi8, strided<[1], offset: 210>>
+    %parent = memref.get_global @parent : memref<694xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<694xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[686][8][1] : memref<694xi8> to memref<8xi8, strided<[1], offset: 686>>
     %distance_negated = arith.subi %c0, %distance : index
     scf.for %i = %c0 to %distance step %c1 {
       %val = memref.load %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
+      func.call @use(%val) : (i8) -> ()
     }
     %b0 = memref.load %parent_origin[%distance] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%b0) : (i8) -> ()
     %idx1 = arith.addi %distance, %c1 : index
     %b1 = memref.load %parent_origin[%idx1] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%b1) : (i8) -> ()
     %idx2 = arith.addi %distance, %c2 : index
     %b2 = memref.load %parent_origin[%idx2] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%b2) : (i8) -> ()
     %idx3 = arith.addi %distance, %c3 : index
     %b3 = memref.load %parent_origin[%idx3] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%b3) : (i8) -> ()
     %b0_i32 = arith.extui %b0 : i8 to i32
     %b1_i32 = arith.extui %b1 : i8 to i32
     %b2_i32 = arith.extui %b2 : i8 to i32

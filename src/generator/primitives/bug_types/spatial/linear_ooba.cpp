@@ -11,10 +11,46 @@
 
 #include "misc.h"
 #include "generator/primitives/access_types/read_action.h"
+#include "generator/primitives/access_types/write_action.h"
 #include "generator/primitives/bug_types/spatial/flow/underflow.h"
 #include "generator/primitives/bug_types/spatial/flow/overflow.h"
 #include "generator/primitives/bug_types/spatial/origin_target_relation/intra_object.h"
 #include "generator/primitives/bug_types/spatial/origin_target_relation/non_object.h"
+
+static void patch_stdlib_oob_write_lines(
+  std::vector<std::string> &lines,
+  std::shared_ptr<AccessAction> access_action,
+  std::shared_ptr<AccessLocation> access_location,
+  std::shared_ptr<OriginTargetRelation> origin_target_relation)
+{
+  if (!is_a<NonObject>(origin_target_relation) || !is_a<WriteAction>(access_action) || access_location->get_name() != "stdlib")
+    return;
+  for (size_t i = 0; i < lines.size(); ++i) {
+    if (lines[i].find("scf.for") != std::string::npos && lines[i].find("%i") != std::string::npos) {
+      // lines.insert(lines.begin() + i + 1, "  %idx_oob = arith.addi %c1, %i : index");
+      ++i;
+    }
+    if (lines[i].find("memref.store") != std::string::npos) {
+      size_t pos = lines[i].find("[%i]");
+      if (pos != std::string::npos) {
+        lines[i].replace(pos, 4, "[%idx_oob]");
+      }
+      pos = lines[i].find(", %i]");
+      if (pos != std::string::npos) {
+        lines[i].replace(pos, 5, ", %idx_oob]");
+      }
+    }
+  }
+}
+
+static void patch_stdlib_oob_write_splitaccess(
+  AccessLocation::SplitAccess &code,
+  std::shared_ptr<AccessAction> access_action,
+  std::shared_ptr<AccessLocation> access_location,
+  std::shared_ptr<OriginTargetRelation> origin_target_relation)
+{
+  patch_stdlib_oob_write_lines(code.access_lines, access_action, access_location, origin_target_relation);
+}
 
 bool LinearOOBA::accepts(std::shared_ptr<Flow> flow) const
 {
@@ -49,7 +85,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
   */
   CodeCanvas variant;
   variant.add_global("func.func private @exit(%arg0: i32) -> ()");
-  variant.add_global("func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }");
+  // use function is provided by CodeCanvas by default
 
   variant.add_test_case_description_line("Origin: " + origin->get_name());
   variant.add_test_case_description_line("Target: " + target->get_name());
@@ -128,9 +164,13 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
             origin_target_canvas_copy->get_target_size(),generate_counter_update,distance, needs_strided, target_offset);
           for ( auto &access_target_code : access_target_codes )
           {
+            // patch_stdlib_oob_write_splitaccess(access_target_code, access_action, access_location, origin_target_relation);
             auto origin_target_canvas_with_access = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas_copy);
             origin_target_canvas_with_access->add_during_lifetime(access_target_code.to_lines());
-            // origin_target_canvas_with_access->add_during_lifetime("func.call @use(%" + origin_target_canvas_copy->get_origin_name() + ") : (memref<8xi8>) -> ()");
+            std::string origin_type_suffix = needs_strided ? ", strided<[1], offset: " + origin_offset + ">>" : ">";
+            std::string use_origin = "use_val_" + origin_target_canvas_copy->get_origin_name();
+            origin_target_canvas_with_access->add_during_lifetime("%" + use_origin + " = memref.load %" + origin_target_canvas_copy->get_origin_name() + "[%c0] : memref<8xi8" + origin_type_suffix);
+            origin_target_canvas_with_access->add_during_lifetime("func.call @use(%" + use_origin + ") : (i8) -> ()");
             origin_target_canvas_with_access->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
             origin_target_canvas_with_access->add_variant_description_line("target accessed by using " + access_target_code.description);
             full_variants.push_back(origin_target_canvas_with_access);
@@ -158,9 +198,18 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
         );
         for ( auto &access_target_code : access_target_codes )
         {
+          // patch_stdlib_oob_write_splitaccess(access_target_code, access_action, access_location, origin_target_relation);
           auto origin_target_canvas_with_access = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas_copy);
-          // origin_target_canvas_with_access->add_during_lifetime("func.call @use(%" + origin_target_canvas_copy->get_target_name() + ") : (memref<8xi8>) -> ()");
-          // origin_target_canvas_with_access->add_during_lifetime("func.call @use(%" + origin_target_canvas_copy->get_origin_name() + ") : (memref<8xi8>) -> ()");
+          std::string target_type_suffix = needs_strided ? ", strided<[1], offset: " + target_offset + ">>" : ">";
+          std::string origin_type_suffix = needs_strided ? ", strided<[1], offset: " + origin_offset + ">>" : ">";
+          std::string use_target = "use_val_" + origin_target_canvas_copy->get_target_name();
+          origin_target_canvas_with_access->add_during_lifetime("%" + use_target + " = memref.load %" + origin_target_canvas_copy->get_target_name() + "[%c0] : memref<8xi8" + target_type_suffix);
+          origin_target_canvas_with_access->add_during_lifetime("func.call @use(%" + use_target + ") : (i8) -> ()");
+          if (origin_target_canvas_copy->get_target_name() != origin_target_canvas_copy->get_origin_name()) {
+            std::string use_origin = "use_val_" + origin_target_canvas_copy->get_origin_name();
+            origin_target_canvas_with_access->add_during_lifetime("%" + use_origin + " = memref.load %" + origin_target_canvas_copy->get_origin_name() + "[%c0] : memref<8xi8" + origin_type_suffix);
+            origin_target_canvas_with_access->add_during_lifetime("func.call @use(%" + use_origin + ") : (i8) -> ()");
+          }
           origin_target_canvas_with_access->add_during_lifetime( AccessLocation::AuxiliaryVariable::to_string_vector( reach_target_code.aux_variables ) );
           origin_target_canvas_with_access->add_during_lifetime(reach_target_code.access_lines);
           origin_target_canvas_with_access->add_during_lifetime(access_target_code.to_lines());
@@ -196,7 +245,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
   */
   CodeCanvas variant;
   variant.add_global("func.func private @exit(%arg0: i32) -> ()");
-  variant.add_global("func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }");
+  // use function is provided by CodeCanvas by default
 
   auto generate_counter_update = std::bind(&Flow::generate_counter_update, flow.get(), std::placeholders::_1);
 
@@ -233,6 +282,8 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
       var_name_to_access = origin_target_canvas->get_origin_name();
     }
 
+    std::string origin_offset_val = static_dist > 0 ? "0" : std::to_string(std::abs(static_dist));
+    std::string target_offset_val = static_dist > 0 ? std::to_string(static_dist) : "0";
     std::vector< std::string > distance_variants = { "0" };
     for ( auto &distance_variant : distance_variants )
     {
@@ -256,8 +307,12 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
           access_action,
           var_name_to_access,
           origin_target_canvas_copy->get_target_size(), 0, "", needs_strided, var_offset);
+        // patch_stdlib_oob_write_lines(access_target_code, access_action, access_location, origin_target_relation);
         origin_target_canvas_copy->add_during_lifetime(access_target_code);
-        // origin_target_canvas_copy->add_during_lifetime("func.call @use(%" + origin_target_canvas_copy->get_origin_name() + ") : (memref<8xi8>) -> ()");
+        std::string origin_type_suffix_val = needs_strided ? ", strided<[1], offset: " + origin_offset_val + ">>" : ">";
+        std::string use_origin_val = "use_val_" + origin_target_canvas_copy->get_origin_name();
+        origin_target_canvas_copy->add_during_lifetime("%" + use_origin_val + " = memref.load %" + origin_target_canvas_copy->get_origin_name() + "[%c0] : memref<8xi8" + origin_type_suffix_val);
+        origin_target_canvas_copy->add_during_lifetime("func.call @use(%" + use_origin_val + ") : (i8) -> ()");
         origin_target_canvas_copy->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
         origin_target_canvas_copy->add_variant_description_line("no space between origin and target");
         full_variants.push_back(origin_target_canvas_copy);
@@ -278,9 +333,20 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
           reach_target_code.result,
           origin_target_canvas_copy->get_target_size(), 0, "", needs_strided, var_offset
         );
+        // patch_stdlib_oob_write_lines(access_target_code, access_action, access_location, origin_target_relation);
 
-        // if ( origin_target_canvas_copy->is_target_allocated() ) origin_target_canvas_copy->add_during_lifetime("func.call @use(%" + origin_target_canvas_copy->get_target_name() + ") : (memref<8xi8>) -> ()");
-        // origin_target_canvas_copy->add_during_lifetime("func.call @use(%" + origin_target_canvas_copy->get_origin_name() + ") : (memref<8xi8>) -> ()");
+        std::string target_type_suffix_val = needs_strided ? ", strided<[1], offset: " + target_offset_val + ">>" : ">";
+        std::string origin_type_suffix_val = needs_strided ? ", strided<[1], offset: " + origin_offset_val + ">>" : ">";
+        std::string use_target_val = "use_val_" + origin_target_canvas_copy->get_target_name();
+        if ( origin_target_canvas_copy->is_target_allocated() ) {
+          origin_target_canvas_copy->add_during_lifetime("%" + use_target_val + " = memref.load %" + origin_target_canvas_copy->get_target_name() + "[%c0] : memref<8xi8" + target_type_suffix_val);
+          origin_target_canvas_copy->add_during_lifetime("func.call @use(%" + use_target_val + ") : (i8) -> ()");
+        }
+        if (origin_target_canvas_copy->get_target_name() != origin_target_canvas_copy->get_origin_name()) {
+          std::string use_origin_val = "use_val_" + origin_target_canvas_copy->get_origin_name();
+          origin_target_canvas_copy->add_during_lifetime("%" + use_origin_val + " = memref.load %" + origin_target_canvas_copy->get_origin_name() + "[%c0] : memref<8xi8" + origin_type_suffix_val);
+          origin_target_canvas_copy->add_during_lifetime("func.call @use(%" + use_origin_val + ") : (i8) -> ()");
+        }
         origin_target_canvas_copy->add_during_lifetime( AccessLocation::AuxiliaryVariable::to_string_vector( reach_target_code.aux_variables ) );
         origin_target_canvas_copy->add_during_lifetime(reach_target_code.access_lines);
         origin_target_canvas_copy->add_during_lifetime(access_target_code);

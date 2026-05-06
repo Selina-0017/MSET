@@ -14,6 +14,9 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
   memref.global @target : memref<160xi8> = dense<0>
 
@@ -38,6 +41,8 @@ module {
   %heap_obj = memref.alloc() : memref<8xi8>
   %read_value_20 = memref.alloca() : memref<8xi8>
   memref.copy %heap_obj, %read_value_20 : memref<8xi8> to memref<8xi8>
+  %use_val_read_value_20 = memref.load %read_value_20[%c0] : memref<8xi8>
+  func.call @use(%use_val_read_value_20) : (i8) -> ()
   func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

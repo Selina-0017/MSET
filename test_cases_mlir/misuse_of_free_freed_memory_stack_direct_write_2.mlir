@@ -14,13 +14,18 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
+  llvm.func @free(!llvm.ptr) -> ()
 
   func.func @f() -> i32 {
   %c8_mof = arith.constant 8 : index
   %c104_mof = arith.constant 104 : index
   %c_magic = arith.constant 96 : i8
   %c0x40 = arith.constant 64 : i8
+  %c16_free = arith.constant 16 : index
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
   %c8 = arith.constant 8 : index
@@ -35,7 +40,11 @@ module {
   memref.store %c0x40, %target[%c104_mof] : memref<160xi8>
   %crafted = memref.subview %target[16][8][1] : memref<160xi8> to memref<8xi8, strided<[1], offset: 16>>
   %_ = memref.alloc() : memref<8xi8>
-  memref.dealloc %crafted : memref<8xi8, strided<[1], offset: 16>>
+  %target_ptr_free = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index
+  %crafted_addr_free = arith.addi %target_ptr_free, %c16_free : index
+  %crafted_i64_free = arith.index_cast %crafted_addr_free : index to i64
+  %crafted_llvm_free = llvm.inttoptr %crafted_i64_free : i64 to !llvm.ptr
+  llvm.call @free(%crafted_llvm_free) : (!llvm.ptr) -> ()
   
   %heap_obj = memref.alloc() : memref<8xi8>
   scf.for %i = %c0 to %c8 step %c1 {

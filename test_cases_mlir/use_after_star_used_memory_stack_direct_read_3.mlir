@@ -12,6 +12,9 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   memref.global @target_addresses : memref<16xindex>
   memref.global @target_arr : memref<1xmemref<16x8xi8>>
   func.func private @exit(%arg0: i32) -> ()
@@ -50,6 +53,7 @@ module {
     %target_loaded = memref.load %global_arr_access[%c0] : memref<1xmemref<16x8xi8>>
   scf.for %i = %c0 to %c8 step %c1 {
     %val = memref.load %target_loaded[%result#1, %i] : memref<16x8xi8>
+    func.call @use(%val) : (i8) -> ()
   }
     func.call @exit(%test_success) : (i32) -> ()
     scf.yield

@@ -18,16 +18,18 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
-  func.func @use(%arg0: memref<8xi8>) -> memref<8xi8> { return %arg0 : memref<8xi8> }
   memref.global @origin : memref<8xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 8 : index
-    %underflow_dist = arith.constant 8 : index
+    %distance = arith.constant 9 : index
+    %underflow_dist = arith.constant 9 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
       %__base = arith.constant -8 : index
@@ -37,13 +39,17 @@ module {
 
     %origin = memref.get_global @origin : memref<8xi8>
     %distance_negated = arith.subi %c0, %distance : index
+    %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
+    func.call @use(%use_val_origin) : (i8) -> ()
     scf.for %reach_index = %c0 to %underflow_dist step %c1 {
       %index = arith.subi %c0, %reach_index : index
       %val = memref.load %origin[%index] : memref<8xi8>
+      func.call @use(%val) : (i8) -> ()
     }
     scf.for %i = %c0 to %c8 step %c1 {
       %__idx = arith.addi %i, %__base : index
       %val = memref.load %origin[%__idx] : memref<8xi8>
+      func.call @use(%val) : (i8) -> ()
     }
     func.call @exit(%test_success) : (i32) -> ()
 

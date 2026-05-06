@@ -14,6 +14,9 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
   memref.global @target : memref<160xi8> = dense<0>
 
@@ -40,6 +43,7 @@ module {
   %heap_obj = memref.alloc() : memref<8xi8>
   scf.for %i = %c0 to %c8 step %c1 {
     %val = memref.load %heap_obj[%i] : memref<8xi8>
+    func.call @use(%val) : (i8) -> ()
   }
   func.call @exit(%test_success) : (i32) -> ()
 

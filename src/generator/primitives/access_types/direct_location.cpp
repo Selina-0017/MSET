@@ -64,24 +64,26 @@ AccessLocation::SplitAccess DirectLocation::generate_split_aux_vars(
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
       {
         std::string idx_expr = "%" + index_var + ", %i";
-        if (!offset.empty() && offset != "0") {
+        if (!offset.empty() && offset != "0" && !needs_strided) {
           split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
           split_access.access_lines.emplace_back("  %__idx = arith.addi %" + index_var + ", %__base : index");
           idx_expr = "%__idx, %i";
         }
         split_access.access_lines.emplace_back("  %val = memref.load %" + access_var_name + "[" + idx_expr + "] : memref<" + array_size_str + "x" + size_str + "xi8" + stride_suffix);
+        split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
       }
       split_access.access_lines.emplace_back("}");
     } else {
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
       {
         std::string idx_expr = "%i";
-        if (!offset.empty() && offset != "0") {
+        if (!offset.empty() && offset != "0" && !needs_strided) {
           split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
           split_access.access_lines.emplace_back("  %__idx = arith.addi %i, %__base : index");
           idx_expr = "%__idx";
         }
         split_access.access_lines.emplace_back("  %val = memref.load %" + access_var_name + "[" + idx_expr + "] : memref<" + size_str + "xi8" + stride_suffix);
+        split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
       }
       split_access.access_lines.emplace_back("}");
     }
@@ -100,7 +102,7 @@ AccessLocation::SplitAccess DirectLocation::generate_split_aux_vars(
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
       {
         std::string idx_expr = "%" + index_var + ", %i";
-        if (!offset.empty() && offset != "0") {
+        if (!offset.empty() && offset != "0" && !needs_strided) {
           split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
           split_access.access_lines.emplace_back("  %__idx = arith.addi %" + index_var + ", %__base : index");
           idx_expr = "%__idx, %i";
@@ -112,7 +114,7 @@ AccessLocation::SplitAccess DirectLocation::generate_split_aux_vars(
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
       {
         std::string idx_expr = "%i";
-        if (!offset.empty() && offset != "0") {
+        if (!offset.empty() && offset != "0" && !needs_strided) {
           split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
           split_access.access_lines.emplace_back("  %__idx = arith.addi %i, %__base : index");
           idx_expr = "%__idx";
@@ -154,24 +156,26 @@ AccessLocation::SplitAccess DirectLocation::generate_split_const_vars(
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
       {
         std::string idx_expr = "%" + index_var + ", %i";
-        if (!offset.empty() && offset != "0") {
+        if (!offset.empty() && offset != "0" && !needs_strided) {
           split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
           split_access.access_lines.emplace_back("  %__idx = arith.addi %" + index_var + ", %__base : index");
           idx_expr = "%__idx, %i";
         }
         split_access.access_lines.emplace_back("  %val = memref.load %" + access_var_name + "[" + idx_expr + "] : memref<" + array_size_str + "x" + size_str + "xi8" + stride_suffix);
+        split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
       }
       split_access.access_lines.emplace_back("}");
     } else {
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
       {
         std::string idx_expr = "%i";
-        if (!offset.empty() && offset != "0") {
+        if (!offset.empty() && offset != "0" && !needs_strided) {
           split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
           split_access.access_lines.emplace_back("  %__idx = arith.addi %i, %__base : index");
           idx_expr = "%__idx";
         }
         split_access.access_lines.emplace_back("  %val = memref.load %" + access_var_name + "[" + idx_expr + "] : memref<" + size_str + "xi8" + stride_suffix);
+        split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
       }
       split_access.access_lines.emplace_back("}");
     }
@@ -190,7 +194,7 @@ AccessLocation::SplitAccess DirectLocation::generate_split_const_vars(
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
       {
         std::string idx_expr = "%" + index_var + ", %i";
-        if (!offset.empty() && offset != "0") {
+        if (!offset.empty() && offset != "0" && !needs_strided) {
           split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
           split_access.access_lines.emplace_back("  %__idx = arith.addi %" + index_var + ", %__base : index");
           idx_expr = "%__idx, %i";
@@ -202,7 +206,7 @@ AccessLocation::SplitAccess DirectLocation::generate_split_const_vars(
       split_access.access_lines.emplace_back("scf.for %i = %c0 to %c" + size_str + " step %c1 {");
       {
         std::string idx_expr = "%i";
-        if (!offset.empty() && offset != "0") {
+        if (!offset.empty() && offset != "0" && !needs_strided) {
           split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
           split_access.access_lines.emplace_back("  %__idx = arith.addi %i, %__base : index");
           idx_expr = "%__idx";
@@ -240,6 +244,7 @@ std::vector<std::string> DirectLocation::generate_at_index(
       "scf.for %j = %c0 to %c" + size_str + " step %c1 {",
       "  %idx = arith.addi %j, %" + index + " : index",
       "  %val = memref.load %" + access_var_name + "[%idx] : memref<" + size_str + "xi8" + stride_suffix,
+      "  func.call @use(%val) : (i8) -> ()",
       "}",
     };
 
@@ -284,6 +289,7 @@ std::vector<std::string> DirectLocation::generate_using_runtime_index(
       "%c1 = arith.constant 1 : index",
       "scf.for %" + index + " = %c0 to %" + distance + " step %c1 {",
       "  %val = memref.load %" + access_var_name + "[%" + index + "] : memref<8xi8>",
+      "  func.call @use(%val) : (i8) -> ()",
       "}",
     };
   }
@@ -343,12 +349,13 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
     if (!appendlines.empty()) split_access.access_lines.emplace_back(appendlines);
     {
       std::string idx_expr = "%" + index_var;
-      if (!offset.empty() && offset != "0") {
+      if (!offset.empty() && offset != "0" && !needs_strided) {
         split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
         split_access.access_lines.emplace_back("  %__idx = arith.addi %" + index_var + ", %__base : index");
         idx_expr = "%__idx";
       }
       split_access.access_lines.emplace_back("  %val = memref.load %" + from + "[" + idx_expr + "] : memref<8xi8" + stride_suffix);
+      split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
     }
     split_access.access_lines.emplace_back("}");
   }
@@ -365,7 +372,7 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
     if (!appendlines.empty()) split_access.access_lines.emplace_back(appendlines);
     {
       std::string idx_expr = "%" + index_var;
-      if (!offset.empty() && offset != "0") {
+      if (!offset.empty() && offset != "0" && !needs_strided) {
         split_access.access_lines.emplace_back("  %__base = arith.constant " + offset + " : index");
         split_access.access_lines.emplace_back("  %__idx = arith.addi %" + index_var + ", %__base : index");
         idx_expr = "%__idx";
@@ -418,6 +425,7 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_aux_ptr(
     split_access.access_lines.emplace_back("scf.for %reach_index = %c0 to %" + dist + " step %c1 {");
     if (!appendlines.empty()) split_access.access_lines.emplace_back(appendlines);
     split_access.access_lines.emplace_back("  %val = memref.load %" + from + "[%" + index_var + "] : memref<8xi8" + stride_suffix);
+    split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
     split_access.access_lines.emplace_back("}");
   }
   else
@@ -467,12 +475,16 @@ std::vector<std::string> DirectLocation::generate_uint32(
       "%c24_i32 = arith.constant 24 : i32",
       "%base = arith.constant " + byte_offset + " : index",
       "%b0 = memref.load %" + from + "[%base] : memref<" + size_str + "xi8" + stride_suffix,
+      "func.call @use(%b0) : (i8) -> ()",
       "%idx1 = arith.addi %base, %c1 : index",
       "%b1 = memref.load %" + from + "[%idx1] : memref<" + size_str + "xi8" + stride_suffix,
+      "func.call @use(%b1) : (i8) -> ()",
       "%idx2 = arith.addi %base, %c2 : index",
       "%b2 = memref.load %" + from + "[%idx2] : memref<" + size_str + "xi8" + stride_suffix,
+      "func.call @use(%b2) : (i8) -> ()",
       "%idx3 = arith.addi %base, %c3 : index",
       "%b3 = memref.load %" + from + "[%idx3] : memref<" + size_str + "xi8" + stride_suffix,
+      "func.call @use(%b3) : (i8) -> ()",
       "%b0_i32 = arith.extui %b0 : i8 to i32",
       "%b1_i32 = arith.extui %b1 : i8 to i32",
       "%b2_i32 = arith.extui %b2 : i8 to i32",
@@ -538,6 +550,7 @@ std::vector<std::string> DirectLocation::generate_uint8(
     lines = {
       "%idx = arith.constant " + std::to_string(size - 1) + " : index",
       "%val = memref.load %" + from + "[%idx] : memref<" + size_str + "xi8" + stride_suffix,
+      "func.call @use(%val) : (i8) -> ()",
     };
   }
   else
@@ -547,6 +560,47 @@ std::vector<std::string> DirectLocation::generate_uint8(
       "%idx = arith.constant " + std::to_string(size - 1) + " : index",
       "%c0xFF = arith.constant 255 : i8",
       "memref.store %c0xFF, %" + from + "[%idx] : memref<" + size_str + "xi8" + stride_suffix,
+    };
+  }
+  return lines;
+}
+
+std::vector<std::string> DirectLocation::generate_llvm_ptr(
+  std::shared_ptr<AccessAction> action,
+  const std::string &llvm_ptr_var_name,
+  size_t size
+) const
+{
+  std::vector<std::string> lines;
+  std::string size_str = std::to_string(size);
+  if (is_a<ReadAction>(action))
+  {
+    // READ: byte-by-byte via llvm.getelementptr + llvm.load + func.call @use
+    lines = {
+      "%c0 = arith.constant 0 : index",
+      "%c1 = arith.constant 1 : index",
+      "%c" + size_str + " = arith.constant " + size_str + " : index",
+      "scf.for %i = %c0 to %c" + size_str + " step %c1 {",
+      "  %i_i64 = arith.index_cast %i : index to i64",
+      "  %gep = llvm.getelementptr %" + llvm_ptr_var_name + "[%i_i64] : (!llvm.ptr, i64) -> !llvm.ptr, i8",
+      "  %val = llvm.load %gep : !llvm.ptr -> i8",
+      "  func.call @use(%val) : (i8) -> ()",
+      "}"
+    };
+  }
+  else
+  {
+    // WRITE: byte-by-byte via llvm.getelementptr + llvm.store
+    lines = {
+      "%c0 = arith.constant 0 : index",
+      "%c1 = arith.constant 1 : index",
+      "%c" + size_str + " = arith.constant " + size_str + " : index",
+      "%c0xFF = arith.constant 255 : i8",
+      "scf.for %i = %c0 to %c" + size_str + " step %c1 {",
+      "  %i_i64 = arith.index_cast %i : index to i64",
+      "  %gep = llvm.getelementptr %" + llvm_ptr_var_name + "[%i_i64] : (!llvm.ptr, i64) -> !llvm.ptr, i8",
+      "  llvm.store %c0xFF, %gep : i8, !llvm.ptr",
+      "}"
     };
   }
   return lines;

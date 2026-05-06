@@ -15,6 +15,9 @@
 module {
   // globals
 
+  func.func @use(%arg0: i8) -> () { func.return }
+    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
+    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
   memref.global @s : memref<16xi8> = dense<170>
 
@@ -36,6 +39,7 @@ module {
     scf.for %j = %c0 to %c8 step %c1 {
       %idx = arith.addi %j, %distance : index
       %val = memref.load %s_origin[%idx] : memref<8xi8, strided<[1], offset: 8>>
+      func.call @use(%val) : (i8) -> ()
     }
     func.call @exit(%test_success) : (i32) -> ()
 
