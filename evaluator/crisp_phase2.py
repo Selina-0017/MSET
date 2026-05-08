@@ -13,9 +13,11 @@ python crisp_phase2.py [testcases].mlir --config asan
 """
 
 import argparse
+import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,18 +25,61 @@ from typing import List, Optional, Tuple
 
 # Paths
 SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
 
 
-def _which(tool: str) -> Path:
-    result = subprocess.run(["which", tool], capture_output=True, text=True)
+def find_tool(name: str, root: Path = PROJECT_ROOT) -> Path:
+    """Search for an executable with caching.
+
+    Lookup order:
+      1. Environment variable (e.g. MSET_MLIR_OPT)
+      2. Cached path from .cache/tool_paths.json
+      3. find command under root (result is written to cache)
+    """
+    env_key = f"MSET_{name.upper().replace('-', '_')}"
+    env_path = os.environ.get(env_key)
+    if env_path:
+        p = Path(env_path)
+        if p.exists():
+            return p
+        raise FileNotFoundError(
+            f"Env {env_key} points to non-existent path: {env_path}"
+        )
+
+    cache_dir = root / ".cache"
+    cache_file = cache_dir / "tool_paths.json"
+    cache = {}
+    if cache_file.exists():
+        try:
+            cache = json.loads(cache_file.read_text())
+        except Exception:
+            cache = {}
+
+    cached = cache.get(name)
+    if cached and Path(cached).exists():
+        return Path(cached)
+
+    # Cache miss: run find
+    cmd = ["find", str(root), "-name", name, "-type", "f"]
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0 or not result.stdout.strip():
-        raise FileNotFoundError(f"Cannot find '{tool}' in PATH")
-    return Path(result.stdout.strip())
+        raise FileNotFoundError(
+            f"Cannot find '{name}' under {root}. "
+            f"Set env {env_key} to skip search."
+        )
+    first_match = result.stdout.strip().split("\n")[0]
+    path = Path(first_match)
+
+    # Update cache
+    cache[name] = str(path)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file.write_text(json.dumps(cache, indent=2))
+    return path
 
 
-MLIR_OPT = _which("mlir-opt")
-MLIR_TRANSLATE = _which("mlir-translate")
-LLC = _which("llc")
+MLIR_OPT = find_tool("mlir-opt")
+MLIR_TRANSLATE = find_tool("mlir-translate")
+LLC = find_tool("llc")
 BUILD_DIR = MLIR_OPT.parent.parent
 ASAN_RT = Path("/usr/lib/llvm-22/lib/clang/22/lib/linux/libclang_rt.asan-x86_64.so")
 MLIR_LIBDIR = BUILD_DIR / "lib"
@@ -125,14 +170,10 @@ def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
                 "cse",
             ]
         )
-    if asan:
-        passes.extend(
-            [
-                "func.func(asan-access-instrument)",
-                "func.func(asan-lifecycle-instrument)",
-            ]
-        )
-    if asan or crisp:
+    # NOTE: Native ASan is handled by clang -fsanitize=address at the LLVM IR
+    # level (functions get sanitize_address attribute + inline shadow checks).
+    # We do NOT run MLIR-level asan-* passes here.
+    if crisp:
         passes.append("convert-asan-to-llvm")
     passes.extend(
         [
@@ -154,7 +195,7 @@ def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
             "convert-complex-to-llvm",
         ]
     )
-    if asan or crisp:
+    if crisp:
         passes.append("convert-asan-globals-to-llvm")
     passes.extend(
         [
@@ -219,18 +260,35 @@ def translate_to_llvmir(llvm_dialect_path: Path, llvm_ir_path: Path):
     ])
 
 
-def compile_llvmir_to_object(llvm_ir_path: Path, obj_path: Path, opt_level: int = 0):
-    """Compile LLVM IR to object file with llc."""
-    cmd = [
-        str(LLC),
-        str(llvm_ir_path),
-        f"-O{opt_level}",
-        "-o", str(obj_path),
-        "--relocation-model=pic",
-        "--filetype=obj",
-    ]
-    # if opt_level is not None:
-    #     cmd.append(f"-O{opt_level}")
+def compile_llvmir_to_object(
+    llvm_ir_path: Path, obj_path: Path, cfg: BenchConfig, opt_level: int = 0
+):
+    """Compile LLVM IR to object file.
+
+    For native ASan we use clang -fsanitize=address so that clang adds the
+    sanitize_address function attribute and runs the LLVM ASan instrumentation
+    pass (inline shadow checks by default).
+    """
+    if cfg.asan_enabled:
+        cmd = [
+            "clang",
+            "-target", "x86_64-linux-gnu",
+            f"-O{opt_level}",
+            "-fsanitize=address",
+            "-fno-omit-frame-pointer",
+            "-c",
+            str(llvm_ir_path),
+            "-o", str(obj_path),
+        ]
+    else:
+        cmd = [
+            str(LLC),
+            str(llvm_ir_path),
+            f"-O{opt_level}",
+            "-o", str(obj_path),
+            "--relocation-model=pic",
+            "--filetype=obj",
+        ]
     run_cmd(cmd)
 
 
@@ -243,17 +301,19 @@ def link_executable(obj_path: Path, exe_path: Path, cfg: BenchConfig, opt_level:
         rpaths.append(f"-Wl,-rpath,{Path(lib).parent}")
 
     cmd = [
-        "clang",
+        "gcc",
         str(obj_path),
         f"-O{opt_level}",
         "-o", str(exe_path),
         f"-L{MLIR_LIBDIR}",
     ] + libs + rpaths
 
-    # Link ASan runtime if needed.
-    # NOTE: Do NOT use -fsanitize=address here because the MLIR ASan passes
-    # already emit the instrumentation; we only need the shared runtime.
-    if cfg.needs_asan_rt:
+    if cfg.asan_enabled:
+        # Native ASan: clang handles instrumentation, runtime linking,
+        # and .init_array registration automatically.
+        cmd.append("-fsanitize=address")
+    elif cfg.needs_asan_rt:
+        # Legacy/CRISP path: manual runtime linking for MLIR-level instrumentation.
         cmd.extend([f"-L{ASAN_RT.parent}", f"-l:{ASAN_RT.name}"])
 
     run_cmd(cmd)
@@ -270,8 +330,12 @@ def run_executable(exe_path: Path, cfg: BenchConfig) -> int:
         lib_paths.append(existing_ld)
     env["LD_LIBRARY_PATH"] = ":".join(lib_paths)
 
-    # Preload ASan runtime if needed
-    if cfg.needs_asan_rt:
+    if cfg.asan_enabled:
+        # Native ASan executable already has the runtime linked/registered;
+        # no LD_PRELOAD needed. Just keep leak detection off for consistency.
+        env.setdefault("ASAN_OPTIONS", "detect_leaks=0")
+    elif cfg.needs_asan_rt:
+        # Legacy/CRISP path: preload the shared ASan runtime.
         existing = env.get("LD_PRELOAD", "")
         if "libclang_rt.asan" not in existing:
             env["LD_PRELOAD"] = (str(ASAN_RT) + " " + existing).strip()
@@ -318,11 +382,16 @@ def main():
     if not input_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
 
-    if args.output_dir is None:
-        output_dir = Path.cwd() / f"{input_path.stem}_output"
+    if args.keep_intermediates:
+        if args.output_dir is None:
+            output_dir = Path.cwd() / f"{input_path.stem}_output"
+        else:
+            output_dir = Path(args.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
     else:
-        output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+        # 不保留任何中间文件/目录，全部在临时目录中操作
+        temp_dir = tempfile.TemporaryDirectory()
+        output_dir = Path(temp_dir.name)
 
     cfg = ASAN_CONFIG if args.config == "asan" else CRISP_CONFIG
 
@@ -343,7 +412,7 @@ def main():
         translate_to_llvmir(llvm_dialect_path, llvm_ir_path)
 
         print(f"[{cfg.tag}] Compiling LLVM IR -> object file ...")
-        compile_llvmir_to_object(llvm_ir_path, obj_path, opt_level=args.opt)
+        compile_llvmir_to_object(llvm_ir_path, obj_path, cfg, opt_level=args.opt)
 
         print(f"[{cfg.tag}] Linking executable: {exe_path}")
         link_executable(obj_path, exe_path, cfg, opt_level=args.opt)
@@ -355,13 +424,8 @@ def main():
         return exit_code
     finally:
         if not args.keep_intermediates:
-            print(f"[{cfg.tag}] Cleaning up intermediates in {output_dir}")
-            for f in [llvm_dialect_path, llvm_ir_path, obj_path, exe_path]:
-                if f.exists():
-                    f.unlink()
-            # Remove output directory if it's now empty
-            if output_dir.exists() and not any(output_dir.iterdir()):
-                output_dir.rmdir()
+            print(f"[{cfg.tag}] Cleaning up all artifacts ...")
+            temp_dir.cleanup()
 
 
 if __name__ == "__main__":
