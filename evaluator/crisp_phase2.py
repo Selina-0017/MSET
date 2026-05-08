@@ -28,58 +28,9 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent.parent
 
 
-def find_tool(name: str, root: Path = PROJECT_ROOT) -> Path:
-    """Search for an executable with caching.
-
-    Lookup order:
-      1. Environment variable (e.g. MSET_MLIR_OPT)
-      2. Cached path from .cache/tool_paths.json
-      3. find command under root (result is written to cache)
-    """
-    env_key = f"MSET_{name.upper().replace('-', '_')}"
-    env_path = os.environ.get(env_key)
-    if env_path:
-        p = Path(env_path)
-        if p.exists():
-            return p
-        raise FileNotFoundError(
-            f"Env {env_key} points to non-existent path: {env_path}"
-        )
-
-    cache_dir = root / ".cache"
-    cache_file = cache_dir / "tool_paths.json"
-    cache = {}
-    if cache_file.exists():
-        try:
-            cache = json.loads(cache_file.read_text())
-        except Exception:
-            cache = {}
-
-    cached = cache.get(name)
-    if cached and Path(cached).exists():
-        return Path(cached)
-
-    # Cache miss: run find
-    cmd = ["find", str(root), "-name", name, "-type", "f"]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0 or not result.stdout.strip():
-        raise FileNotFoundError(
-            f"Cannot find '{name}' under {root}. "
-            f"Set env {env_key} to skip search."
-        )
-    first_match = result.stdout.strip().split("\n")[0]
-    path = Path(first_match)
-
-    # Update cache
-    cache[name] = str(path)
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file.write_text(json.dumps(cache, indent=2))
-    return path
-
-
-MLIR_OPT = find_tool("mlir-opt")
-MLIR_TRANSLATE = find_tool("mlir-translate")
-LLC = find_tool("llc")
+MLIR_OPT = Path.home() / "torch-mlir/build/bin/mlir-opt"
+MLIR_TRANSLATE = Path.home() / "torch-mlir/build/bin/mlir-translate"
+LLC = Path.home() / "torch-mlir/build/bin/llc"
 BUILD_DIR = MLIR_OPT.parent.parent
 ASAN_RT = Path("/usr/lib/llvm-22/lib/clang/22/lib/linux/libclang_rt.asan-x86_64.so")
 MLIR_LIBDIR = BUILD_DIR / "lib"
