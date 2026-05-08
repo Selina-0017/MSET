@@ -5,7 +5,7 @@ test_case_binaries/
 .vscode/
 .cache/
 __pycache__/
-
+./evaluator/__pycache__/
 # Compiled Object files
 *.o
 *.obj
