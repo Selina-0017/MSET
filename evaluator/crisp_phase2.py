@@ -23,30 +23,19 @@ from typing import List, Optional, Tuple
 
 # Paths
 SCRIPT_DIR = Path(__file__).resolve().parent
-# crisp_phase2.py may live directly in the project root or in a sub-directory.
-# Auto-detect the real project root by looking for build/bin/mlir-opt.
-def _find_project_root(start: Path) -> Path:
-    p = start
-    while p != p.parent:
-        if (p / "build" / "bin" / "mlir-opt").exists():
-            return p
-        p = p.parent
-    # Search sibling directories (e.g., MSET is inside a parent that also
-    # contains torch-mlir with its own build/ directory).
-    parent = start.parent
-    for sibling in parent.iterdir():
-        if sibling.is_dir() and (sibling / "build" / "bin" / "mlir-opt").exists():
-            return sibling
-    # Final fallback: only if mlir-opt really lives under SCRIPT_DIR/build
-    if (SCRIPT_DIR / "build" / "bin" / "mlir-opt").exists():
-        return SCRIPT_DIR
-    return SCRIPT_DIR.parent
 
-PROJECT_ROOT = _find_project_root(SCRIPT_DIR)
-BUILD_DIR = PROJECT_ROOT / "build"
-MLIR_OPT = BUILD_DIR / "bin" / "mlir-opt"
-MLIR_TRANSLATE = BUILD_DIR / "bin" / "mlir-translate"
-LLC = BUILD_DIR / "bin" / "llc"
+
+def _which(tool: str) -> Path:
+    result = subprocess.run(["which", tool], capture_output=True, text=True)
+    if result.returncode != 0 or not result.stdout.strip():
+        raise FileNotFoundError(f"Cannot find '{tool}' in PATH")
+    return Path(result.stdout.strip())
+
+
+MLIR_OPT = _which("mlir-opt")
+MLIR_TRANSLATE = _which("mlir-translate")
+LLC = _which("llc")
+BUILD_DIR = MLIR_OPT.parent.parent
 ASAN_RT = Path("/usr/lib/llvm-22/lib/clang/22/lib/linux/libclang_rt.asan-x86_64.so")
 MLIR_LIBDIR = BUILD_DIR / "lib"
 SHARED_LIBS = [
@@ -89,68 +78,91 @@ def run_cmd(cmd: list, cwd=None, env=None, check=True) -> subprocess.CompletedPr
 def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
     """Build the MLIR pass pipeline from bufferized MLIR to LLVM dialect."""
     passes = []
-
-    # ASan/CRISP access instrumentation (before any lowering/canonicalize
-    # that might remove the operations we want to instrument).
-    if crisp or asan:
-        passes.append("func.func(asan-access-instrument)")
-
-    # Lifecycle instrumentation after bufferization is stable
-    if crisp or asan:
-        passes.append("func.func(asan-lifecycle-instrument)")
-
-    # # Lower linalg to loops, then affine
-    # passes.extend([
-    #     "func.func(convert-linalg-to-loops)",
-    #     "func.func(lower-affine)",
-    #     "canonicalize",
-    # ])
-
-    # CRISP optimization passes (only for crisp config)
+    passes.extend(
+        [
+            "func.func(linalg-generalize-named-ops)",
+            "func.func(linalg-fuse-elementwise-ops)",
+            "convert-shape-to-std",
+        ]
+    )
     if crisp:
-        passes.extend([
-            "asan-optimization",
-            "func.func(asan-static-check)",
-            "asan-check-elimination",
-            "canonicalize",
-            "asan-hoist-check",
-            "canonicalize",
-            "func.func(asan-writeback-elimination)",
-        ])
-
-    # Convert ASan dialect to LLVM
+        passes.append("func.func(asan-access-instrument)")
+    # passes.extend(
+    #     [
+    #         "one-shot-bufferize{"
+    #         "copy-before-write "
+    #         "bufferize-function-boundaries "
+    #         "function-boundary-type-conversion=identity-layout-map"
+    #         "}",
+    #         "func.func(buffer-hoisting)",
+    #         "buffer-results-to-out-params",
+    #         "drop-equivalent-buffer-results",
+    #         "func.func(expand-realloc)",
+    #         "buffer-deallocation-pipeline",
+    #     ]
+    # )
+    if crisp:
+        passes.append("func.func(asan-lifecycle-instrument)")
+    passes.append("func.func(convert-linalg-to-loops)")
+    if crisp:
+        passes.extend(
+            [
+                "func.func(asan-static-check)",
+                "asan-optimization",
+                "canonicalize",
+                "cse",
+                "asan-check-elimination",
+                "canonicalize",
+                "cse",
+                "asan-hoist-check",
+                "canonicalize",
+                "cse",
+                "asan-check-elimination",
+                "canonicalize",
+                "cse",
+                "func.func(asan-writeback-elimination)",
+                "canonicalize",
+                "cse",
+            ]
+        )
+    if asan:
+        passes.extend(
+            [
+                "func.func(asan-access-instrument)",
+                "func.func(asan-lifecycle-instrument)",
+            ]
+        )
     if asan or crisp:
         passes.append("convert-asan-to-llvm")
-
-    # Lower to LLVM dialect
-    passes.extend([
-        "convert-scf-to-cf",
-        "func.func(arith-expand)",
-        "func.func(convert-math-to-llvm)",
-        "convert-math-to-libm",
-        "expand-strided-metadata",
-        "finalize-memref-to-llvm",
-        "convert-bufferization-to-memref",
-        "finalize-memref-to-llvm",
-        "convert-vector-to-scf",
-        "convert-vector-to-llvm",
-        "func.func(convert-arith-to-llvm)",
-        "convert-func-to-llvm",
-        "convert-cf-to-llvm",
-        "convert-complex-to-llvm",
-    ])
-
-    # Convert ASan globals to LLVM
+    passes.extend(
+        [
+            "func.func(lower-affine)",
+            "canonicalize",
+            "convert-scf-to-cf",
+            "func.func(arith-expand)",
+            "func.func(convert-math-to-llvm)",
+            "convert-math-to-libm",
+            "expand-strided-metadata",
+            "finalize-memref-to-llvm",
+            "convert-bufferization-to-memref",
+            "finalize-memref-to-llvm",
+            "convert-vector-to-scf",
+            "convert-vector-to-llvm",
+            "func.func(convert-arith-to-llvm)",
+            "convert-func-to-llvm",
+            "convert-cf-to-llvm",
+            "convert-complex-to-llvm",
+        ]
+    )
     if asan or crisp:
         passes.append("convert-asan-globals-to-llvm")
-
-    # Final cleanup
-    passes.extend([
-        "reconcile-unrealized-casts",
-        "canonicalize",
-        "cse",
-    ])
-
+    passes.extend(
+        [
+            "reconcile-unrealized-casts",
+            "canonicalize",
+            "cse",
+        ]
+    )
     return f"builtin.module({','.join(passes)})"
 
 
@@ -207,18 +219,22 @@ def translate_to_llvmir(llvm_dialect_path: Path, llvm_ir_path: Path):
     ])
 
 
-def compile_llvmir_to_object(llvm_ir_path: Path, obj_path: Path):
+def compile_llvmir_to_object(llvm_ir_path: Path, obj_path: Path, opt_level: int = 0):
     """Compile LLVM IR to object file with llc."""
-    run_cmd([
+    cmd = [
         str(LLC),
         str(llvm_ir_path),
+        f"-O{opt_level}",
         "-o", str(obj_path),
         "--relocation-model=pic",
         "--filetype=obj",
-    ])
+    ]
+    # if opt_level is not None:
+    #     cmd.append(f"-O{opt_level}")
+    run_cmd(cmd)
 
 
-def link_executable(obj_path: Path, exe_path: Path, cfg: BenchConfig):
+def link_executable(obj_path: Path, exe_path: Path, cfg: BenchConfig, opt_level: int = 0):
     """Link object file into an executable with clang."""
     libs = []
     rpaths = []
@@ -229,6 +245,7 @@ def link_executable(obj_path: Path, exe_path: Path, cfg: BenchConfig):
     cmd = [
         "clang",
         str(obj_path),
+        f"-O{opt_level}",
         "-o", str(exe_path),
         f"-L{MLIR_LIBDIR}",
     ] + libs + rpaths
@@ -287,6 +304,13 @@ def main():
         help="Keep intermediate files (LLVM dialect, LLVM IR, object file)",
     )
     parser.add_argument("--debug-ir", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--opt",
+        type=int,
+        default=0,
+        choices=[0, 1, 2, 3],
+        help="Optimization level for llc when compiling LLVM IR to object (default: 0).",
+    )
 
     args = parser.parse_args()
 
@@ -319,10 +343,10 @@ def main():
         translate_to_llvmir(llvm_dialect_path, llvm_ir_path)
 
         print(f"[{cfg.tag}] Compiling LLVM IR -> object file ...")
-        compile_llvmir_to_object(llvm_ir_path, obj_path)
+        compile_llvmir_to_object(llvm_ir_path, obj_path, opt_level=args.opt)
 
         print(f"[{cfg.tag}] Linking executable: {exe_path}")
-        link_executable(obj_path, exe_path, cfg)
+        link_executable(obj_path, exe_path, cfg, opt_level=args.opt)
 
         print(f"[{cfg.tag}] Executing {exe_path} ...")
         exit_code = run_executable(exe_path, cfg)

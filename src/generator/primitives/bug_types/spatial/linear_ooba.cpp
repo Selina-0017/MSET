@@ -17,41 +17,6 @@
 #include "generator/primitives/bug_types/spatial/origin_target_relation/intra_object.h"
 #include "generator/primitives/bug_types/spatial/origin_target_relation/non_object.h"
 
-static void patch_stdlib_oob_write_lines(
-  std::vector<std::string> &lines,
-  std::shared_ptr<AccessAction> access_action,
-  std::shared_ptr<AccessLocation> access_location,
-  std::shared_ptr<OriginTargetRelation> origin_target_relation)
-{
-  if (!is_a<NonObject>(origin_target_relation) || !is_a<WriteAction>(access_action) || access_location->get_name() != "stdlib")
-    return;
-  for (size_t i = 0; i < lines.size(); ++i) {
-    if (lines[i].find("scf.for") != std::string::npos && lines[i].find("%i") != std::string::npos) {
-      // lines.insert(lines.begin() + i + 1, "  %idx_oob = arith.addi %c1, %i : index");
-      ++i;
-    }
-    if (lines[i].find("memref.store") != std::string::npos) {
-      size_t pos = lines[i].find("[%i]");
-      if (pos != std::string::npos) {
-        lines[i].replace(pos, 4, "[%idx_oob]");
-      }
-      pos = lines[i].find(", %i]");
-      if (pos != std::string::npos) {
-        lines[i].replace(pos, 5, ", %idx_oob]");
-      }
-    }
-  }
-}
-
-static void patch_stdlib_oob_write_splitaccess(
-  AccessLocation::SplitAccess &code,
-  std::shared_ptr<AccessAction> access_action,
-  std::shared_ptr<AccessLocation> access_location,
-  std::shared_ptr<OriginTargetRelation> origin_target_relation)
-{
-  patch_stdlib_oob_write_lines(code.access_lines, access_action, access_location, origin_target_relation);
-}
-
 bool LinearOOBA::accepts(std::shared_ptr<Flow> flow) const
 {
   return true;
@@ -164,7 +129,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
             origin_target_canvas_copy->get_target_size(),generate_counter_update,distance, needs_strided, target_offset);
           for ( auto &access_target_code : access_target_codes )
           {
-            // patch_stdlib_oob_write_splitaccess(access_target_code, access_action, access_location, origin_target_relation);
             auto origin_target_canvas_with_access = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas_copy);
             origin_target_canvas_with_access->add_during_lifetime(access_target_code.to_lines());
             std::string origin_type_suffix = needs_strided ? ", strided<[1], offset: " + origin_offset + ">>" : ">";
@@ -198,7 +162,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
         );
         for ( auto &access_target_code : access_target_codes )
         {
-          // patch_stdlib_oob_write_splitaccess(access_target_code, access_action, access_location, origin_target_relation);
           auto origin_target_canvas_with_access = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas_copy);
           std::string target_type_suffix = needs_strided ? ", strided<[1], offset: " + target_offset + ">>" : ">";
           std::string origin_type_suffix = needs_strided ? ", strided<[1], offset: " + origin_offset + ">>" : ">";
@@ -307,7 +270,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
           access_action,
           var_name_to_access,
           origin_target_canvas_copy->get_target_size(), 0, "", needs_strided, var_offset);
-        // patch_stdlib_oob_write_lines(access_target_code, access_action, access_location, origin_target_relation);
         origin_target_canvas_copy->add_during_lifetime(access_target_code);
         std::string origin_type_suffix_val = needs_strided ? ", strided<[1], offset: " + origin_offset_val + ">>" : ">";
         std::string use_origin_val = "use_val_" + origin_target_canvas_copy->get_origin_name();
@@ -333,7 +295,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
           reach_target_code.result,
           origin_target_canvas_copy->get_target_size(), 0, "", needs_strided, var_offset
         );
-        // patch_stdlib_oob_write_lines(access_target_code, access_action, access_location, origin_target_relation);
 
         std::string target_type_suffix_val = needs_strided ? ", strided<[1], offset: " + target_offset_val + ">>" : ">";
         std::string origin_type_suffix_val = needs_strided ? ", strided<[1], offset: " + origin_offset_val + ">>" : ">";

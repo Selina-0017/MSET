@@ -33,6 +33,8 @@ module {
     %tmp = memref.alloc() : memref<8xi8>
     %tmp2 = memref.alloc() : memref<8xi8>
     %pointer_to_double_free = memref.alloc() : memref<8xi8> // pointer to be double-freed
+    %use_val = memref.load %pointer_to_double_free[%c0] : memref<8xi8>
+    func.call @use(%use_val) : (i8) -> ()
     memref.dealloc %pointer_to_double_free : memref<8xi8>
     memref.dealloc %tmp : memref<8xi8> // no use after free required
     memref.dealloc %pointer_to_double_free : memref<8xi8> // double free

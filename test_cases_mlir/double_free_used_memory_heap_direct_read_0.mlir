@@ -30,7 +30,6 @@ module {
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
     %pointer_to_double_free = memref.alloc() : memref<10xi8> // pointer to be double-freed
     memref.dealloc %pointer_to_double_free : memref<10xi8>
     memref.store %c0_i8_df, %pointer_to_double_free[%c8_df] : memref<10xi8> // use-after-free for heap metadata corruption

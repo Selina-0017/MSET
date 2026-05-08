@@ -27,20 +27,13 @@
 #ifndef MAX_OBJECT_SIZE
 #define MAX_OBJECT_SIZE ((size_t)1 << 29)
 #endif
-
 volatile void *_use(volatile void *p) { return p; }
 const char content[8] = "ZZZZZZZ";
-
 // types
-
 // globals
-
-
 int f()
 {
   // locals
-
-
   char *origin = (char *)malloc( 8 );
   origin[0] = 0xAA;
   origin[1] = 0xAA;
