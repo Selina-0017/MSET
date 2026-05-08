@@ -2,6 +2,9 @@
 /build/
 test_case_binaries/
 .venv/
+.vscode/
+.cache/
+__pycache__/
 
 # Compiled Object files
 *.o
