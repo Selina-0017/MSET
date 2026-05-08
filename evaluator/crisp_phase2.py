@@ -67,20 +67,22 @@ def run_cmd(cmd: list, cwd=None, env=None, check=True) -> subprocess.CompletedPr
     if result.stderr:
         print(f"[stderr]\n{result.stderr}")
     if check and result.returncode != 0:
-        raise RuntimeError(f"Command failed (rc={result.returncode}): {cmd_str}")
+        stderr = result.stderr.strip() if result.stderr else "(no stderr)"
+        raise RuntimeError(f"Subprocess failed (rc={result.returncode}): {stderr[-800:]}")
+
     return result
 
 
 def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
     """Build the MLIR pass pipeline from bufferized MLIR to LLVM dialect."""
     passes = []
-    passes.extend(
-        [
-            "func.func(linalg-generalize-named-ops)",
-            "func.func(linalg-fuse-elementwise-ops)",
-            "convert-shape-to-std",
-        ]
-    )
+    # passes.extend(
+    #     [
+    #         "func.func(linalg-generalize-named-ops)",
+    #         "func.func(linalg-fuse-elementwise-ops)",
+    #         "convert-shape-to-std",
+    #     ]
+    # )
     if crisp:
         passes.append("func.func(asan-access-instrument)")
     # passes.extend(
@@ -252,7 +254,7 @@ def link_executable(obj_path: Path, exe_path: Path, cfg: BenchConfig, opt_level:
         rpaths.append(f"-Wl,-rpath,{Path(lib).parent}")
 
     cmd = [
-        "gcc",
+        "clang",
         str(obj_path),
         f"-O{opt_level}",
         "-o", str(exe_path),
