@@ -459,13 +459,28 @@ def run_single_test(mlir_path: str, config: str, output_dir: str, timeout: int, 
         return -1, True, stdout_out, stderr_out
 
 
+# Detection keywords that indicate a bug was caught (in stdout or stderr).
+_DETECTION_KEYWORDS = {
+    "underflow",
+    "overflow",
+    "is out of logical bounds",
+    "is out of bounds",
+    "Element type mismatch",
+    "Index out of bounds"
+}
+
+
+def _contains_detection_keyword(text: str) -> bool:
+    return any(kw in text for kw in _DETECTION_KEYWORDS)
+
+
 def classify_result(returncode: int, timed_out: bool, stdout: str, stderr: str) -> ExecResult:
     """Map crisp_phase2.py return code to ExecResult."""
     if timed_out:
         return ExecResult.UNDETECTED_TIMEOUT
 
     # Check both stdout and stderr because crisp_phase2.py may re-print child stderr into its stdout
-    if "warning: Index out of bounds" in stdout or "warning: Index out of bounds" in stderr:
+    if _contains_detection_keyword(stdout) or _contains_detection_keyword(stderr):
         # print("[√] MLIR pass detected out-of-bounds access at compile time.")
         return ExecResult.DETECTED
 
