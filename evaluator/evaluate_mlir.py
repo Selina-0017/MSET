@@ -461,8 +461,10 @@ def run_single_test(mlir_path: str, config: str, output_dir: str, timeout: int, 
 
 # Detection keywords that indicate a bug was caught (in stdout or stderr).
 _DETECTION_KEYWORDS = {
-    "underflow",
-    "overflow",
+    "Byte underflow:",
+    "Byte overflow:",
+    "Range byte underflow:",
+    "Range byte overflow:",
     "is out of logical bounds",
     "is out of bounds",
     "Element type mismatch",
