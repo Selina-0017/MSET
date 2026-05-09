@@ -466,7 +466,6 @@ _DETECTION_KEYWORDS = {
     "is out of logical bounds",
     "is out of bounds",
     "Element type mismatch",
-    "Index out of bounds"
 }
 
 
