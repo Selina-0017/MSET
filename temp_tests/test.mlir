@@ -6,7 +6,7 @@ module {
         %c2_i8 = arith.constant 2 : i8
         %c1_i8 = arith.constant 1 : i8
         %c0_i8 = arith.constant 0 : i8
-        %c3 = arith.constant 4 : index
+        %c3 = arith.constant 3 : index
         %c0 = arith.constant 0 : index
         %c1 = arith.constant 1 : index
         %c2 = arith.constant 2 : index

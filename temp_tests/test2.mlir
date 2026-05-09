@@ -1,7 +1,7 @@
 
 module {
     memref.global @b_init : memref<2xi8> = uninitialized
-    memref.global constant @k_init : memref<1xi8> = dense<0>
+    memref.global @k_init : memref<1xi8> = dense<0>
     func.func @main() -> i8 {
         %b = memref.get_global @b_init : memref<2xi8>
         %c0_i8 = arith.constant 0 : i8
@@ -21,6 +21,8 @@ module {
         %val = memref.load %k[%c0] : memref<1xi8>
         %idx = arith.index_cast %val : i8 to index
         %dk_view = memref.view %d_view[%idx][%c1] : memref<?xi8> to memref<?xi8>
+        %dk = memref.load %dk_view[%c0] : memref<?xi8>
+        memref.store %dk,%c_view[%c0] : memref<?xi8>
         // --- 7. return c->x ---
         %ret = memref.load %c_view[%c0] : memref<?xi8>
         func.return %ret : i8
