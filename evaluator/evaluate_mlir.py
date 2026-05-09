@@ -5,9 +5,9 @@ evaluate_mlir.py - MSET-compatible evaluation for MLIR pass correctness.
 Evaluates MLIR test cases using crisp_phase2.py toolchain and outputs
 results in the same format as the original MSET C++ evaluator.
 
-Supports parallel execution and baseline comparison (e.g., ASan vs CRISP).
+Supports parallel execution.
 
-python evaluate_mlir.py --table-summary
+python evaluate_mlir.py --table
 """
 
 import argparse
@@ -427,7 +427,7 @@ def signal_name(returncode: int) -> str:
     return signal.Signals(sig_num).name if hasattr(signal, "Signals") else f"SIG{sig_num}"
 
 
-def run_single_test(mlir_path: str, config: str, output_dir: str, timeout: int) -> Tuple[int, bool, str, str]:
+def run_single_test(mlir_path: str, config: str, output_dir: str, timeout: int, opt_level: int = 0) -> Tuple[int, bool, str, str]:
     """
     Run crisp_phase2.py on a single MLIR file.
     Returns (returncode, timed_out, stdout_output, stderr_output).
@@ -440,6 +440,8 @@ def run_single_test(mlir_path: str, config: str, output_dir: str, timeout: int) 
         "--config",
         config,
     ]
+    if opt_level != 0:
+        cmd.extend(["--opt", str(opt_level)])
     env = os.environ.copy()
 
     try:
@@ -542,7 +544,30 @@ def score_to_str(value: float) -> str:
 # Output helpers (matching MSET format)
 # ---------------------------------------------------------------------------
 
-def print_results(results: List[ExecResult], baseline_results: List[ExecResult], with_baseline: bool):
+def _format_metric(counters: Counters, getter) -> str:
+    if counters.total == 0:
+        return "N/A"
+    val = getter(counters)
+    pct = score_to_str(val * 100.0 / counters.total)
+    return f"{pct} ({int(val)})"
+
+
+def _print_category_table(title: str, categories: List[Tuple[str, List[ExecResult]]]):
+    """Print a formatted table of detection stats per category."""
+    print(f"\n{title}")
+    header = f"{'Category':<24} | {'Detection Rate':>14} | {'Precond Failed':>14} | {'Detected':>10} | {'Undetected':>10}"
+    print(header)
+    print("-" * len(header))
+    for name, results in categories:
+        c = compute_counters(results)
+        det_rate = _format_metric(c, lambda x: x.precond_failed + x.detections)
+        precond = _format_metric(c, lambda x: x.precond_failed)
+        detected = _format_metric(c, lambda x: x.detections)
+        undetected = _format_metric(c, lambda x: x.undetected + x.invalids)
+        print(f"{name:<24} | {det_rate:>14} | {precond:>14} | {detected:>10} | {undetected:>10}")
+
+
+def print_results(results: List[ExecResult]):
     counters = compute_counters(results)
     if not results:
         overall = precond = detected = undetected = "N/A"
@@ -556,186 +581,67 @@ def print_results(results: List[ExecResult], baseline_results: List[ExecResult],
             (counters.undetected + counters.invalids) * 100.0 / counters.total
         )
 
-    b_overall = b_precond = b_detected = b_undetected = "N/A"
-    if with_baseline:
-        baseline_counters = compute_counters(baseline_results)
-        if baseline_results:
-            b_overall = score_to_str(
-                (baseline_counters.precond_failed + baseline_counters.detections) * 100.0 / baseline_counters.total
-            )
-            b_precond = score_to_str(baseline_counters.precond_failed * 100.0 / baseline_counters.total)
-            b_detected = score_to_str(baseline_counters.detections * 100.0 / baseline_counters.total)
-            b_undetected = score_to_str(
-                (baseline_counters.undetected + baseline_counters.invalids) * 100.0 / baseline_counters.total
-            )
-
     print(
-        f"Detection rate: {overall} ({counters.precond_failed + counters.detections} out of {counters.total} test cases)",
-        end="",
+        f"Detection rate: {overall} ({counters.precond_failed + counters.detections} out of {counters.total} test cases)"
     )
-    if with_baseline:
-        print(f" / Baseline: {b_overall}", end="")
-    print()
 
     print("Results for test cases:")
-    print(
-        f"- Preconditions failed: {precond} ({counters.precond_failed})",
-        end="",
-    )
-    if with_baseline:
-        print(f" / Baseline: {b_precond}", end="")
-    print()
-
-    print(f"- Detected: {detected} ({counters.detections})", end="")
-    if with_baseline:
-        print(f" / Baseline: {b_detected}", end="")
-    print()
+    print(f"- Preconditions failed: {precond} ({counters.precond_failed})")
+    print(f"- Detected: {detected} ({counters.detections})")
 
     if counters.invalids == 0:
-        print(f"- Undetected: {undetected} ({counters.undetected})", end="")
-        if with_baseline:
-            print(f" / Baseline: {b_undetected}", end="")
-        print()
+        print(f"- Undetected: {undetected} ({counters.undetected})")
     else:
         print(
-            f"- Undetected: {undetected} ({counters.undetected} undetected attempts, {counters.invalids} didn't pass validation)",
-            end="",
+            f"- Undetected: {undetected} ({counters.undetected} undetected attempts, {counters.invalids} didn't pass validation)"
         )
-        if with_baseline:
-            print(f" / Baseline: {b_undetected}", end="")
-        print()
 
-
-def print_table_summary(
-    raw_spatial: Dict[str, List[ExecResult]],
-    raw_temporal: Dict[str, List[ExecResult]],
-    raw_spatial_base: Dict[str, List[ExecResult]],
-    raw_temporal_base: Dict[str, List[ExecResult]],
-    with_baseline: bool,
-):
-    print("Table summary:")
-    print(
-        f"{'Linear OOBA':<12} | {'Non-Linear OOBA':<16} | {'Type Confusion OOBA':<20} | "
-        f"{'Use-after-*':<12} | {'Double-free':<12} | {'Misuse-of-free':<14}"
-    )
-
-    # Results row
-    counters = compute_counters(raw_spatial.get("Linear OOBA", []))
-    print(f"{counters.precond_failed + counters.detections:<12}", end="")
-    counters = compute_counters(raw_spatial.get("Non-Linear OOBA", []))
-    print(f" | {counters.precond_failed + counters.detections:<16}", end="")
-    counters = compute_counters(raw_spatial.get("Type Confusion OOBA", []))
-    print(f" | {counters.precond_failed + counters.detections:<20}", end="")
-    counters = compute_counters(raw_temporal.get("Use-after-*", []))
-    print(f" | {counters.precond_failed + counters.detections:<12}", end="")
-    counters = compute_counters(raw_temporal.get("Double-free", []))
-    print(f" | {counters.precond_failed + counters.detections:<12}", end="")
-    counters = compute_counters(raw_temporal.get("Misuse-of-free", []))
-    print(f" | {counters.precond_failed + counters.detections:<14}")
-
-    if with_baseline:
-        counters = compute_counters(raw_spatial_base.get("Linear OOBA", []))
-        print(f"{counters.precond_failed + counters.detections:<12}", end="")
-        counters = compute_counters(raw_spatial_base.get("Non-Linear OOBA", []))
-        print(f" | {counters.precond_failed + counters.detections:<16}", end="")
-        counters = compute_counters(raw_spatial_base.get("Type Confusion OOBA", []))
-        print(f" | {counters.precond_failed + counters.detections:<20}", end="")
-        counters = compute_counters(raw_temporal_base.get("Use-after-*", []))
-        print(f" | {counters.precond_failed + counters.detections:<12}", end="")
-        counters = compute_counters(raw_temporal_base.get("Double-free", []))
-        print(f" | {counters.precond_failed + counters.detections:<12}", end="")
-        counters = compute_counters(raw_temporal_base.get("Misuse-of-free", []))
-        print(f" | {counters.precond_failed + counters.detections:<14}  (baseline)")
 
 
 def process_results(
     raw_temporal: Dict[str, List[ExecResult]],
     raw_spatial: Dict[str, List[ExecResult]],
-    raw_temporal_base: Dict[str, List[ExecResult]],
-    raw_spatial_base: Dict[str, List[ExecResult]],
     raw_overall: List[ExecResult],
-    raw_overall_base: List[ExecResult],
-    print_table: bool,
-    with_baseline: bool,
     verbose: bool,
 ):
     if verbose:
-        print("\n==============================\n")
-        print("Temporal bugs:")
-        print_results(raw_temporal.get("all", []), raw_temporal_base.get("all", []), with_baseline)
+        temporal_categories = [
+            ("Overall", raw_temporal.get("all", [])),
+        ] + [
+            (info, raw_temporal.get(info, [])) for info in TEMPORAL_BUGS_INFO
+        ] + [
+            (info, raw_temporal.get(info, [])) for info in REGIONS_INFO
+        ] + [
+            (info, raw_temporal.get(info, [])) for info in TEMPORAL_MEMORY_STATES_INFO
+        ] + [
+            (info, raw_temporal.get(info, [])) for info in ACCESS_LOCATIONS_INFO
+        ] + [
+            (info, raw_temporal.get(info, [])) for info in ACCESS_ACTIONS_INFO
+        ]
+        _print_category_table("Temporal Bugs Distribution", temporal_categories)
 
-        print("\nBug detection distribution per bug type:")
-        for info in TEMPORAL_BUGS_INFO:
-            print(f"{info}:")
-            print_results(raw_temporal.get(info, []), raw_temporal_base.get(info, []), with_baseline)
-
-        print("\nBug detection distribution per region:")
-        for info in REGIONS_INFO:
-            print(f"{info}:")
-            print_results(raw_temporal.get(info, []), raw_temporal_base.get(info, []), with_baseline)
-
-        print("\nBug detection distribution per memory state:")
-        for info in TEMPORAL_MEMORY_STATES_INFO:
-            print(f"{info}:")
-            print_results(raw_temporal.get(info, []), raw_temporal_base.get(info, []), with_baseline)
-
-        print("\nBug detection distribution per access type location:")
-        for info in ACCESS_LOCATIONS_INFO:
-            print(f"{info}:")
-            print_results(raw_temporal.get(info, []), raw_temporal_base.get(info, []), with_baseline)
-
-        print("\nBug detection distribution per access type action:")
-        for info in ACCESS_ACTIONS_INFO:
-            print(f"{info}:")
-            print_results(raw_temporal.get(info, []), raw_temporal_base.get(info, []), with_baseline)
-
-        print("\n==============================\n")
-        print("Spatial bugs:")
-        print_results(raw_spatial.get("all", []), raw_spatial_base.get("all", []), with_baseline)
-
-        print("\nBug detection distribution per bug type:")
-        for info in SPATIAL_BUGS_INFO:
-            print(f"{info}:")
-            print_results(raw_spatial.get(info, []), raw_spatial_base.get(info, []), with_baseline)
-
-        print("\nBug detection distribution per origin:")
-        for info in REGIONS_INFO:
-            print(f"{info}:")
-            print_results(raw_spatial.get("origin " + info, []), raw_spatial_base.get("origin " + info, []), with_baseline)
-
-        print("\nBug detection distribution per target:")
-        for info in REGIONS_INFO:
-            print(f"{info}:")
-            print_results(raw_spatial.get("target " + info, []), raw_spatial_base.get("target " + info, []), with_baseline)
-
-        print("\nBug detection distribution per origin-target relation:")
-        for info in ORIGIN_TARGET_RELATIONS_INFO:
-            print(f"{info}:")
-            print_results(raw_spatial.get(info, []), raw_spatial_base.get(info, []), with_baseline)
-
-        print("\nBug detection distribution per flow:")
-        for info in FLOWS_INFO:
-            print(f"{info}:")
-            print_results(raw_spatial.get(info, []), raw_spatial_base.get(info, []), with_baseline)
-
-        print("\nBug detection distribution per access type location:")
-        for info in ACCESS_LOCATIONS_INFO:
-            print(f"{info}:")
-            print_results(raw_spatial.get(info, []), raw_spatial_base.get(info, []), with_baseline)
-
-        print("\nBug detection distribution per access type action:")
-        for info in ACCESS_ACTIONS_INFO:
-            print(f"{info}:")
-            print_results(raw_spatial.get(info, []), raw_spatial_base.get(info, []), with_baseline)
-
-        print("\n==============================\n")
+        spatial_categories = [
+            ("Overall", raw_spatial.get("all", [])),
+        ] + [
+            (info, raw_spatial.get(info, [])) for info in SPATIAL_BUGS_INFO
+        ] + [
+            (f"Origin {info}", raw_spatial.get("origin " + info, [])) for info in REGIONS_INFO
+        ] + [
+            (f"Target {info}", raw_spatial.get("target " + info, [])) for info in REGIONS_INFO
+        ] + [
+            (info, raw_spatial.get(info, [])) for info in ORIGIN_TARGET_RELATIONS_INFO
+        ] + [
+            (info, raw_spatial.get(info, [])) for info in FLOWS_INFO
+        ] + [
+            (info, raw_spatial.get(info, [])) for info in ACCESS_LOCATIONS_INFO
+        ] + [
+            (info, raw_spatial.get(info, [])) for info in ACCESS_ACTIONS_INFO
+        ]
+        _print_category_table("Spatial Bugs Distribution", spatial_categories)
 
     print("Overall results:")
-    print_results(raw_overall, raw_overall_base, with_baseline)
+    print_results(raw_overall)
 
-    if print_table:
-        print()
-        print_table_summary(raw_spatial, raw_temporal, raw_spatial_base, raw_temporal_base, with_baseline)
 
 
 # ---------------------------------------------------------------------------
@@ -744,24 +650,20 @@ def process_results(
 
 def evaluate_all(
     test_cases_dir: str,
-    baseline_config: str,
-    test_config: str,
+    config: str,
     timeout: int,
     jobs: int,
     verbose: bool,
-    keep_binaries: bool,
+    keep: bool,
+    opt_level: int = 0,
 ) -> Tuple[
     Dict[str, List[ExecResult]],
     Dict[str, List[ExecResult]],
-    Dict[str, List[ExecResult]],
-    Dict[str, List[ExecResult]],
-    List[ExecResult],
     List[ExecResult],
 ]:
     """
     Returns:
-      (raw_temporal, raw_spatial, raw_temporal_baseline, raw_spatial_baseline,
-       raw_overall, raw_overall_baseline)
+      (raw_temporal, raw_spatial, raw_overall)
     """
     test_dir = Path(test_cases_dir)
     mlir_files = sorted(test_dir.glob("*.mlir"))
@@ -792,14 +694,8 @@ def evaluate_all(
     work_items = []  # (config, tc, out_dir)
     for key, variants in grouped.items():
         for tc in variants:
-            # Test config always runs
-            out_dir = str(tmp_base / f"{test_config}_{tc.file_name_without_suffix}")
-            work_items.append((test_config, tc, out_dir))
-
-            # Baseline only runs non-validation variants, and only when it differs from test config
-            if not tc.is_validation and baseline_config != test_config:
-                out_dir = str(tmp_base / f"{baseline_config}_{tc.file_name_without_suffix}")
-                work_items.append((baseline_config, tc, out_dir))
+            out_dir = str(tmp_base / f"{config}_{tc.file_name_without_suffix}")
+            work_items.append((config, tc, out_dir))
 
     print(f"Total work items: {len(work_items)}")
 
@@ -809,7 +705,7 @@ def evaluate_all(
     with ProcessPoolExecutor(max_workers=jobs) as executor:
         future_to_work = {}
         for config, tc, out_dir in work_items:
-            future = executor.submit(run_single_test, tc.file_path, config, out_dir, timeout)
+            future = executor.submit(run_single_test, tc.file_path, config, out_dir, timeout, opt_level)
             future_to_work[future] = (config, tc)
 
         completed = 0
@@ -823,47 +719,33 @@ def evaluate_all(
 
             results_map[(config, tc.file_path)] = (returncode, timed_out, stdout, stderr)
             completed += 1
-            if verbose:
-                res = classify_result(returncode, timed_out, stdout, stderr)
-                print(f"[{completed}/{len(work_items)}] {config}: {tc.file_name} -> {res}")
 
     # Collect results
     raw_temporal_results: Dict[str, List[ExecResult]] = defaultdict(list)
     raw_spatial_results: Dict[str, List[ExecResult]] = defaultdict(list)
-    raw_temporal_baseline: Dict[str, List[ExecResult]] = defaultdict(list)
-    raw_spatial_baseline: Dict[str, List[ExecResult]] = defaultdict(list)
     raw_overall_results: List[ExecResult] = []
-    raw_overall_baseline: List[ExecResult] = []
 
     evaluated_variants = 0
     for key, variants in grouped.items():
-        group_baseline_results: List[ExecResult] = []
         group_results: List[ExecResult] = []
 
         for tc in variants:
             if tc.is_validation:
-                rc, to, stdout, stderr = results_map.get((test_config, tc.file_path), (-1, False, "", ""))
+                rc, to, stdout, stderr = results_map.get((config, tc.file_path), (-1, False, "", ""))
                 res = classify_result(rc, to, stdout, stderr)
                 # Validation must be UNDETECTED; anything else invalidates the test case
                 if res != ExecResult.UNDETECTED:
                     group_results.append(ExecResult.INVALID)
             else:
-                rc_base, to_base, stdout_base, stderr_base = results_map.get(
-                    (baseline_config, tc.file_path), (-1, False, "", "")
-                )
-                res_base = classify_result(rc_base, to_base, stdout_base, stderr_base)
-
                 rc_test, to_test, stdout_test, stderr_test = results_map.get(
-                    (test_config, tc.file_path), (-1, False, "", "")
+                    (config, tc.file_path), (-1, False, "", "")
                 )
                 res_test = classify_result(rc_test, to_test, stdout_test, stderr_test)
 
-                group_baseline_results.append(res_base)
                 group_results.append(res_test)
                 evaluated_variants += 1
 
         overall = compute_overall_result(group_results)
-        overall_base = compute_overall_result(group_baseline_results)
 
         tc0 = variants[0]
         if isinstance(tc0, TemporalTestCaseInformation):
@@ -876,18 +758,9 @@ def evaluate_all(
             raw_temporal_results["all"].append(overall)
             raw_overall_results.append(overall)
 
-            # raw_temporal_baseline[t.temporal_bug_name].append(overall_base)
-            # raw_temporal_baseline[t.temporal_memory_state_name].append(overall_base)
-            # raw_temporal_baseline[t.region_name].append(overall_base)
-            # raw_temporal_baseline[t.access_location_name].append(overall_base)
-            # raw_temporal_baseline[t.access_action_name].append(overall_base)
-            # raw_temporal_baseline["all"].append(overall_base)
-            # raw_overall_baseline.append(overall_base)
-
             if overall != ExecResult.DETECTED:
                 print(
-                    f"For {t.get_test_case_key()}, the overall result is {overall_result_to_string(overall)} "
-                    # f"(Baseline: {overall_result_to_string(overall_base)})."
+                    f"For {t.get_test_case_key()}, the overall result is {overall_result_to_string(overall)}"
                 )
         else:
             s = tc0
@@ -901,34 +774,20 @@ def evaluate_all(
             raw_spatial_results["all"].append(overall)
             raw_overall_results.append(overall)
 
-            # raw_spatial_baseline["origin " + s.origin_name].append(overall_base)
-            # raw_spatial_baseline["target " + s.target_name].append(overall_base)
-            # raw_spatial_baseline[s.origin_target_relation_name].append(overall_base)
-            # raw_spatial_baseline[s.flow_name].append(overall_base)
-            # raw_spatial_baseline[s.spatial_bug_name].append(overall_base)
-            # raw_spatial_baseline[s.access_location_name].append(overall_base)
-            # raw_spatial_baseline[s.access_action_name].append(overall_base)
-            # raw_spatial_baseline["all"].append(overall_base)
-            # raw_overall_baseline.append(overall_base)
-
             if overall != ExecResult.DETECTED:
                 print(
-                    f"For {s.get_test_case_key()}, the overall result is {overall_result_to_string(overall)} "
-                    # f"(Baseline: {overall_result_to_string(overall_base)})."
+                    f"For {s.get_test_case_key()}, the overall result is {overall_result_to_string(overall)}"
                 )
 
     print(f"Evaluated {total_groups} test cases, {evaluated_variants} variants.")
 
-    if not keep_binaries:
+    if not keep:
         shutil.rmtree(tmp_base, ignore_errors=True)
 
     return (
         raw_temporal_results,
         raw_spatial_results,
-        raw_temporal_baseline,
-        raw_spatial_baseline,
         raw_overall_results,
-        raw_overall_baseline,
     )
 
 
@@ -946,19 +805,10 @@ def main():
         help="Directory containing .mlir test cases (default: test_cases_mlir)",
     )
     parser.add_argument(
-        "--baseline-config",
-        default="asan",
-        help="Baseline configuration name passed to crisp_phase2.py (default: asan)",
-    )
-    parser.add_argument(
-        "--test-config",
+        "--config",
+        choices=["crisp", "asan0", "asan-outline", "asan-opt"],
         default="crisp",
-        help="Test configuration name passed to crisp_phase2.py (default: crisp)",
-    )
-    parser.add_argument(
-        "--no-baseline",
-        action="store_true",
-        help="Skip baseline evaluation; evaluate test-config only",
+        help="Compilation config passed to crisp_phase2.py (default: crisp)",
     )
     parser.add_argument(
         "-j",
@@ -980,47 +830,37 @@ def main():
         help="Verbose output with per-category breakdown",
     )
     parser.add_argument(
-        "--table-summary",
-        action="store_true",
-        help="Print compact table summary",
-    )
-    parser.add_argument(
-        "--keep-binaries",
+        "--keep",
         action="store_true",
         help="Keep generated binaries in temp directory",
     )
+    parser.add_argument(
+        "--opt",
+        type=int,
+        default=0,
+        choices=[0, 1, 2, 3],
+        help="Optimization level passed to crisp_phase2.py (default: 0)",
+    )
     args = parser.parse_args()
-
-    with_baseline = False
-    # baseline_cfg = args.baseline_config if with_baseline else args.test_config
-    baseline_cfg = args.test_config
 
     (
         raw_temporal,
         raw_spatial,
-        raw_temporal_base,
-        raw_spatial_base,
         raw_overall,
-        raw_overall_base,
     ) = evaluate_all(
         args.test_cases_dir,
-        baseline_cfg,
-        args.test_config,
+        args.config,
         args.timeout,
         args.jobs,
         args.verbose,
-        args.keep_binaries,
+        args.keep,
+        args.opt,
     )
 
     process_results(
         raw_temporal,
         raw_spatial,
-        raw_temporal_base if with_baseline else {},
-        raw_spatial_base if with_baseline else {},
         raw_overall,
-        raw_overall_base if with_baseline else [],
-        args.table_summary,
-        with_baseline,
         args.verbose,
     )
 

@@ -5,16 +5,19 @@ This script takes a **bufferized** MLIR file (containing memref instead of tenso
 compiles it through the CRISP pipeline (lowering to LLVM dialect, then to
 LLVM IR, object file, and finally an executable), and runs the executable.
 
-Supports two configs:
-  - asan:  standard ASan instrumentation
-  - crisp: CRISP optimized ASan instrumentation
+Supports four configs:
+  - crisp:         CRISP optimized ASan instrumentation
+  - asan0:         standard ASan instrumentation
+  - asan-outline:  ASan with outline instrumentation
+  - asan-opt:      ASan with outline instrumentation and opt disabled
 
-python crisp_phase2.py [testcases].mlir --config asan
+python crisp_phase2.py [testcases].mlir --config asan0
 """
 
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -48,12 +51,20 @@ class BenchConfig:
     needs_asan_rt: bool
 
 
-ASAN_CONFIG = BenchConfig(
-    tag="asan", asan_enabled=True, crisp_enabled=False, needs_asan_rt=True
+ASAN0_CONFIG = BenchConfig(
+    tag="asan0", asan_enabled=True, crisp_enabled=False, needs_asan_rt=True
 )
 
 CRISP_CONFIG = BenchConfig(
     tag="crisp", asan_enabled=False, crisp_enabled=True, needs_asan_rt=True
+)
+
+ASAN_OUTLINE_CONFIG = BenchConfig(
+    tag="asan-outline", asan_enabled=True, crisp_enabled=False, needs_asan_rt=True
+)
+
+ASAN_OPT_CONFIG = BenchConfig(
+    tag="asan-opt", asan_enabled=True, crisp_enabled=False, needs_asan_rt=True
 )
 
 
@@ -76,13 +87,13 @@ def run_cmd(cmd: list, cwd=None, env=None, check=True) -> subprocess.CompletedPr
 def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
     """Build the MLIR pass pipeline from bufferized MLIR to LLVM dialect."""
     passes = []
-    # passes.extend(
-    #     [
-    #         "func.func(linalg-generalize-named-ops)",
-    #         "func.func(linalg-fuse-elementwise-ops)",
-    #         "convert-shape-to-std",
-    #     ]
-    # )
+    passes.extend(
+        [
+            "func.func(linalg-generalize-named-ops)",
+            "func.func(linalg-fuse-elementwise-ops)",
+            "convert-shape-to-std",
+        ]
+    )
     if crisp:
         passes.append("func.func(asan-access-instrument)")
     # passes.extend(
@@ -166,7 +177,6 @@ def _ensure_data_layout(input_path: Path, output_dir: Path) -> Path:
     content = input_path.read_text()
     if "data_layout" in content:
         return input_path
-    import re
     m = re.search(r'module\s*\{', content)
     if not m:
         return input_path
@@ -176,6 +186,84 @@ def _ensure_data_layout(input_path: Path, output_dir: Path) -> Path:
     temp_path.write_text(new_content)
     return temp_path
 
+
+_HOST_TRIPLE: Optional[str] = None
+
+
+def _get_host_triple() -> str:
+    """Query clang for the host target triple and cache it."""
+    global _HOST_TRIPLE
+    if _HOST_TRIPLE is None:
+        result = subprocess.run(
+            ["clang", "-dumpmachine"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        _HOST_TRIPLE = result.stdout.strip()
+    return _HOST_TRIPLE
+
+
+def _ensure_target_triple(llvm_ir_path: Path):
+    """Inject host target triple into .ll if missing so clang doesn't warn."""
+    content = llvm_ir_path.read_text()
+    if "target triple" in content:
+        return
+    triple = _get_host_triple()
+    triple_line = f'target triple = "{triple}"\n'
+    m = re.search(r"^source_filename\s*=.*$", content, re.MULTILINE)
+    if m:
+        insert_pos = m.end()
+        content = content[:insert_pos] + "\n" + triple_line + content[insert_pos:]
+    else:
+        lines = content.splitlines(keepends=True)
+        if lines:
+            content = lines[0] + triple_line + "".join(lines[1:])
+        else:
+            content = triple_line + content
+    llvm_ir_path.write_text(content)
+
+
+def _inject_sanitize_address(llvm_ir_path: Path):
+    """Inject sanitize_address attribute into all functions in .ll file."""
+    content = llvm_ir_path.read_text()
+    if "sanitize_address" in content:
+        return
+
+    # 1. 在已有的 attributes #N 中追加 sanitize_address
+    attr_pattern = re.compile(r"^attributes\s+#(\d+)\s+=\s+\{([^}]*)\}", re.MULTILINE)
+    existing_attrs = list(attr_pattern.finditer(content))
+    for m in reversed(existing_attrs):
+        attr_body = m.group(2).strip()
+        if "sanitize_address" in attr_body:
+            continue
+        new_body = attr_body + " sanitize_address" if attr_body else "sanitize_address"
+        new_str = f"attributes #{m.group(1)} = {{ {new_body} }}"
+        content = content[:m.start()] + new_str + content[m.end():]
+
+    # 2. 给没有属性组的 define/declare 函数统一分配新编号
+    func_pattern = re.compile(
+        r"^(define|declare)\s+[^\n]*?\)\s*(?!\s*#)(?=\s*\{|$)",
+        re.MULTILINE,
+    )
+    max_attr_num = max((int(m.group(1)) for m in existing_attrs), default=-1)
+    new_attr_num = max_attr_num + 1
+    func_matches = list(func_pattern.finditer(content))
+    if func_matches:
+        for m in reversed(func_matches):
+            matched_text = m.group(0)
+            rparen_idx = matched_text.rfind(")")
+            absolute_idx = m.start() + rparen_idx + 1
+            content = content[:absolute_idx] + f" #{new_attr_num}" + content[absolute_idx:]
+        content = content.rstrip("\n") + f"\n\nattributes #{new_attr_num} = {{ sanitize_address }}\n"
+
+    llvm_ir_path.write_text(content)
+
+
+def _prepare_llvm_ir(llvm_ir_path: Path, add_sanitize: bool = False):
+    _ensure_target_triple(llvm_ir_path)
+    if add_sanitize:
+        _inject_sanitize_address(llvm_ir_path)
 
 def compile_mlir_to_llvm_dialect(
     input_path: Path, output_path: Path, cfg: BenchConfig, debug_ir: bool = False
@@ -225,14 +313,22 @@ def compile_llvmir_to_object(
     if cfg.asan_enabled:
         cmd = [
             "clang",
-            "-target", "x86_64-linux-gnu",
             f"-O{opt_level}",
             "-fsanitize=address",
             "-fno-omit-frame-pointer",
+        ]
+        if cfg.tag == "asan-outline":
+            cmd.append("-fsanitize-address-outline-instrumentation")
+        elif cfg.tag == "asan-opt":
+            cmd.extend([
+                "-fsanitize-address-outline-instrumentation",
+                "-mllvm", "-asan-opt=false",
+            ])
+        cmd.extend([
             "-c",
             str(llvm_ir_path),
             "-o", str(obj_path),
-        ]
+        ])
     else:
         cmd = [
             str(LLC),
@@ -311,12 +407,14 @@ def main():
     )
     parser.add_argument(
         "--config",
-        choices=["asan", "crisp"],
+        choices=["crisp", "asan0", "asan-outline", "asan-opt"],
         default="crisp",
-        help="Select compilation config: 'asan' for ASan-only, 'crisp' for ASan+CRISP.",
+        help="Select compilation config: 'crisp' for CRISP, 'asan0' for standard ASan, "
+             "'asan-outline' for ASan with outline instrumentation, "
+             "'asan-opt' for ASan with outline instrumentation and opt disabled.",
     )
     parser.add_argument(
-        "--keep-intermediates",
+        "--keep",
         action="store_true",
         help="Keep intermediate files (LLVM dialect, LLVM IR, object file)",
     )
@@ -335,7 +433,7 @@ def main():
     if not input_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
 
-    if args.keep_intermediates:
+    if args.keep:
         if args.output_dir is None:
             output_dir = Path.cwd() / f"{input_path.stem}_output"
         else:
@@ -346,7 +444,13 @@ def main():
         temp_dir = tempfile.TemporaryDirectory()
         output_dir = Path(temp_dir.name)
 
-    cfg = ASAN_CONFIG if args.config == "asan" else CRISP_CONFIG
+    config_map = {
+        "crisp": CRISP_CONFIG,
+        "asan0": ASAN0_CONFIG,
+        "asan-outline": ASAN_OUTLINE_CONFIG,
+        "asan-opt": ASAN_OPT_CONFIG,
+    }
+    cfg = config_map[args.config]
 
     # Intermediate files
     llvm_dialect_path = output_dir / f"{input_path.stem}_llvm.mlir"
@@ -363,6 +467,7 @@ def main():
 
         print(f"[{cfg.tag}] Translating LLVM dialect -> LLVM IR ...")
         translate_to_llvmir(llvm_dialect_path, llvm_ir_path)
+        _prepare_llvm_ir(llvm_ir_path, add_sanitize=cfg.asan_enabled)
 
         print(f"[{cfg.tag}] Compiling LLVM IR -> object file ...")
         compile_llvmir_to_object(llvm_ir_path, obj_path, cfg, opt_level=args.opt)
@@ -376,7 +481,7 @@ def main():
 
         return exit_code
     finally:
-        if not args.keep_intermediates:
+        if not args.keep:
             print(f"[{cfg.tag}] Cleaning up all artifacts ...")
             temp_dir.cleanup()
 

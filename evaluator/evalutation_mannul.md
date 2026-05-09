@@ -14,17 +14,18 @@ python evaluate_mlir.py
 ### 可用命令示例
 
 ```bash
-# 详细输出（逐个输出每个样例的overall 结果）
+# 详细输出（输出表格总结每个bug type的overall 结果）
 python evaluate_mlir.py -v
 
-# 只输出表格摘要
-python evaluate_mlir.py --table-summary
 
 # 8 线程并行，单样例超时 60 秒
 python evaluate_mlir.py -j 8 --timeout 60
 
 # 保留编译生成的中间文件（默认会清理 temp 目录）
-python evaluate_mlir.py --keep-binaries
+python evaluate_mlir.py --keep
+
+# 使用 asan0 配置，优化级别 O2
+python evaluate_mlir.py --config asan0 --opt 2
 ```
 
 
@@ -47,13 +48,14 @@ Results for test cases:
 ### 详细输出 (`-v`)
 
 按 temporal / spatial 两大类，分别输出 bug type、region、memory state、access location、access action 等维度的统计。
-
-### 表格摘要 (`--table-summary`)
-
 ```
-Table summary:
-Linear OOBA   | Non-Linear OOBA  | Type Confusion OOBA  | Use-after-* | Double-free  | Misuse-of-free
-105           | 98               | 87                   | 92          | 90           | 88
+Temporal Bugs Distribution
+Category                 | Detection Rate | Precond Failed |   Detected | Undetected
+------------------------------------------------------------------------------------
+Overall                  |    50.00% (20) |      0.00% (0) | 50.00% (20) | 50.00% (20)
+Misuse-of-free           |   100.00% (20) |      0.00% (0) | 100.00% (20) |  0.00% (0)
+Double-free              |      0.00% (0) |      0.00% (0) |  0.00% (0) | 100.00% (4)
+....
 ```
 
 ---
@@ -71,11 +73,14 @@ Linear OOBA   | Non-Linear OOBA  | Type Confusion OOBA  | Use-after-* | Double-f
 # 使用 crisp 配置（默认）
 python crisp_phase2.py test_cases_mlir/linear_ooba_heap_heap_inter_object_overflow_direct_read_0.mlir
 
-# 使用 asan 配置
-python crisp_phase2.py test.mlir --config asan
+# 使用 asan0 配置
+python crisp_phase2.py test.mlir --config asan0
+
+# 使用 asan-outline 配置，优化级别 O2，保留中间文件
+python crisp_phase2.py test.mlir --config asan-outline --opt 2 --keep
 
 # 指定输出目录并保留中间文件
-python crisp_phase2.py test.mlir ./my_output --config crisp --keep-intermediates
+python crisp_phase2.py test.mlir ./my_output --config crisp --keep
 ```
 
 ### 完整编译流程
@@ -96,7 +101,7 @@ executable  (可执行文件)
 exit code   (42=成功, 43=预条件失败, 0=未检测, 其他=检测到错误)
 ```
 
-默认情况下，中间文件（`_llvm.mlir`, `.ll`, `.o`, `executable`）会在执行完毕后自动清理。使用 `--keep-intermediates` 可保留。
+默认情况下，中间文件（`_llvm.mlir`, `.ll`, `.o`, `executable`）会在执行完毕后自动清理。使用 `--keep` 可保留。
 
 ---
 
@@ -106,8 +111,9 @@ exit code   (42=成功, 43=预条件失败, 0=未检测, 其他=检测到错误)
 |------|------|--------|------|
 | `input_mlir` | 位置参数 | 必填 | 输入的 bufferized MLIR 文件路径 |
 | `output_dir` | 位置参数 | `./<stem>_output` | 输出目录，存放中间文件和可执行文件 |
-| `--config` | 可选 | `crisp` | 编译配置：`asan`（标准 ASan）或 `crisp`（CRISP 优化 ASan） |
-| `--keep-intermediates` | 开关 | `False` | 保留中间文件（LLVM dialect、LLVM IR、object、可执行文件） |
+| `--config` | 可选 | `crisp` | 编译配置：`crisp`、`asan0`、`asan-outline`、`asan-opt` |
+| `--keep` | 开关 | `False` | 保留中间文件（LLVM dialect、LLVM IR、object、可执行文件） |
+| `--opt` | 可选 | `0` | 优化级别（`0/1/2/3`），传给 llc / clang |
 | `--debug-ir` | 开关 | 隐藏 | 打印 `--mlir-print-ir-after-all`（调试用，参数隐藏） |
 
 
