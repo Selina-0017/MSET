@@ -17,8 +17,6 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
   memref.global @origin : memref<8xi8> = dense<170>
 
@@ -36,8 +34,15 @@ module {
 
     %origin = memref.get_global @origin : memref<8xi8>
     %distance_negated = arith.subi %c0, %distance : index
-    scf.for %i = %c0 to %c0 step %c1 {
+    
+    %final_i = scf.while (%i = %c0) : (index) -> index {
+      %cond = arith.cmpi slt, %i, %c0 : index
+      scf.condition(%cond) %i : index
+    } do {
+    ^bb0(%i: index):
       memref.store %c0xFF, %origin[%i] : memref<8xi8>
+      %next_i = arith.addi %i, %c1 : index
+      scf.yield %next_i : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xFF, %origin[%i] : memref<8xi8>

@@ -45,7 +45,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> NonLinearOOBA::generate(
     return 42;
   */
   CodeCanvas variant;
-  variant.add_global("func.func private @exit(%arg0: i32) -> ()");
 
   variant.add_test_case_description_line("Origin: " + origin->get_name());
   variant.add_test_case_description_line("Target: " + target->get_name());
@@ -102,7 +101,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> NonLinearOOBA::generate_val
     return 42;
   */
   CodeCanvas variant;
-  variant.add_global("func.func private @exit(%arg0: i32) -> ()");
 
   variant.add_test_case_description_line("Origin: " + origin->get_name());
   variant.add_test_case_description_line("Target: " + target->get_name());

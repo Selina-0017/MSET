@@ -10,17 +10,15 @@
 // Bug type: intra-object, linear OOBA, overflow
 // Access type: stdlib, read
 // Variant:
-//  - target declared after origin
-//  - distance is checked as is
-//  - target reached by using a auxiliary pointer
-//  - target accessed by using constants
+//  - target declared before origin
+//  - distance is negated before checking
+//  - target reached by using a index
+//  - target accessed by using auxiliary variables
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
   memref.global @s : memref<16xi8> = dense<170>
 
@@ -28,7 +26,7 @@ module {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 9 : index
+    %distance = arith.constant 8 : index
     %c1 = arith.constant 1 : index
     %c1024 = arith.constant 1024 : index
     %c0_i32 = arith.constant 0 : i32
@@ -36,28 +34,35 @@ module {
 
 
     %s = memref.get_global @s : memref<16xi8>
-    %s_origin = memref.subview %s[0][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %s_target = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
+    %s_target = memref.subview %s[0][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %s_origin = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
     %distance_negated = arith.subi %c0, %distance : index
-    %use_val_s_target = memref.load %s_target[%c0] : memref<8xi8, strided<[1], offset: 8>>
+    %use_val_s_target = memref.load %s_target[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_s_target) : (i8) -> ()
-    %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
+    %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 8>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
-    %read_value_153 = memref.alloca() : memref<1024xi8>
-    scf.for %i = %c0 to %distance step %c1024 {
-      %remaining = arith.subi %distance, %i : index
+    %read_value_208 = memref.alloca() : memref<1024xi8>
+    %negadist_variant = arith.subi %c0, %distance_negated : index
+    %final_i = scf.while (%i = %c0) : (index) -> index {
+      %cond = arith.cmpi slt, %i, %negadist_variant : index
+      scf.condition(%cond) %i : index
+    } do {
+    ^bb0(%i: index):
+      %remaining = arith.subi %negadist_variant, %i : index
       %is_full = arith.cmpi sgt, %remaining, %c1024 : index
       %step = arith.select %is_full, %c1024, %remaining : index
-      %src_slice = memref.subview %s_origin[%i][%step][1] : memref<8xi8, strided<[1], offset: 0>> to memref<?xi8, strided<[1], offset: ?>>
-      %dst_slice = memref.subview %read_value_153[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
+      %src_slice = memref.subview %s_origin[%i][%step][1] : memref<8xi8, strided<[1], offset: 8>> to memref<?xi8, strided<[1], offset: ?>>
+      %dst_slice = memref.subview %read_value_208[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
       memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>
+      %next_i = arith.addi %i, %c1024 : index
+      scf.yield %next_i : index
     }
-    %use_val_read_value_153 = memref.load %read_value_153[%c0] : memref<1024xi8>
-    func.call @use(%use_val_read_value_153) : (i8) -> ()
-    %read_value_157 = memref.alloca() : memref<8xi8>
-    memref.copy %s_origin, %read_value_157 : memref<8xi8, strided<[1], offset: 0>> to memref<8xi8>
-    %use_val_read_value_157 = memref.load %read_value_157[%c0] : memref<8xi8>
-    func.call @use(%use_val_read_value_157) : (i8) -> ()
+    %use_val_read_value_208 = memref.load %read_value_208[%c0] : memref<1024xi8>
+    func.call @use(%use_val_read_value_208) : (i8) -> ()
+    %read_value_210 = memref.alloca() : memref<8xi8>
+    memref.copy %s_origin, %read_value_210 : memref<8xi8, strided<[1], offset: 8>> to memref<8xi8>
+    %use_val_read_value_210 = memref.load %read_value_210[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_210) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

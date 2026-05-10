@@ -11,16 +11,14 @@
 // Access type: stdlib, read
 // Variant:
 //  - target after origin (overflow)
-//  - distance is checked as is
+//  - distance is negated before checking
 //  - target reached by using a index
-//  - target accessed by using constants
+//  - target accessed by using auxiliary variables
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -28,10 +26,10 @@ module {
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
-    %c1024 = arith.constant 1024 : index
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
+    %c1024 = arith.constant 1024 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
@@ -39,26 +37,33 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
+
+    %distance_negated = arith.subi %c0, %distance : index
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
     func.call @use(%use_val_origin) : (i8) -> ()
-    %read_value_64 = memref.alloca() : memref<1024xi8>
-    scf.for %i = %c0 to %distance step %c1024 {
-      %remaining = arith.subi %distance, %i : index
+    %read_value_80 = memref.alloca() : memref<1024xi8>
+    %negadist_variant = arith.subi %c0, %distance_negated : index
+    %final_i = scf.while (%i = %c0) : (index) -> index {
+      %cond = arith.cmpi slt, %i, %negadist_variant : index
+      scf.condition(%cond) %i : index
+    } do {
+    ^bb0(%i: index):
+      %remaining = arith.subi %negadist_variant, %i : index
       %is_full = arith.cmpi sgt, %remaining, %c1024 : index
       %step = arith.select %is_full, %c1024, %remaining : index
       %src_slice = memref.subview %origin[%i][%step][1] : memref<8xi8> to memref<?xi8, strided<[1], offset: ?>>
-      %dst_slice = memref.subview %read_value_64[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
+      %dst_slice = memref.subview %read_value_80[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
       memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>
+      %next_i = arith.addi %i, %c1024 : index
+      scf.yield %next_i : index
     }
-    %use_val_read_value_64 = memref.load %read_value_64[%c0] : memref<1024xi8>
-    func.call @use(%use_val_read_value_64) : (i8) -> ()
-    %read_value_67 = memref.alloca() : memref<8xi8>
-    memref.copy %origin, %read_value_67 : memref<8xi8> to memref<8xi8>
-    %use_val_read_value_67 = memref.load %read_value_67[%c0] : memref<8xi8>
-    func.call @use(%use_val_read_value_67) : (i8) -> ()
+    %use_val_read_value_80 = memref.load %read_value_80[%c0] : memref<1024xi8>
+    func.call @use(%use_val_read_value_80) : (i8) -> ()
+    %read_value_82 = memref.alloca() : memref<8xi8>
+    memref.copy %origin, %read_value_82 : memref<8xi8> to memref<8xi8>
+    %use_val_read_value_82 = memref.load %read_value_82[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_82) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
-
-    %distance_negated = arith.subi %c0, %distance : index
 
     return %c0_i32 : i32
   }

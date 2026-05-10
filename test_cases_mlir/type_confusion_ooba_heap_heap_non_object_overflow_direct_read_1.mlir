@@ -11,14 +11,12 @@
 // Access type: direct, read
 // Variant:
 //  - target after origin (overflow)
-//  - using load widening
+//  - using memref.view for load widening
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -30,11 +28,7 @@ module {
     %c0xAA = arith.constant 170 : i8
     %distance = arith.constant 9 : index
     %c2 = arith.constant 2 : index
-    %c3 = arith.constant 3 : index
-    %c8_i32 = arith.constant 8 : i32
-    %c16_i32 = arith.constant 16 : i32
-    %c24_i32 = arith.constant 24 : i32
-    %base = arith.constant 5 : index
+    %c4 = arith.constant 4 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
@@ -44,27 +38,12 @@ module {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
     %distance_negated = arith.subi %c0, %distance : index
-    %b0 = memref.load %origin[%base] : memref<8xi8>
-    func.call @use(%b0) : (i8) -> ()
-    %idx1 = arith.addi %base, %c1 : index
-    %b1 = memref.load %origin[%idx1] : memref<8xi8>
-    func.call @use(%b1) : (i8) -> ()
-    %idx2 = arith.addi %base, %c2 : index
-    %b2 = memref.load %origin[%idx2] : memref<8xi8>
-    func.call @use(%b2) : (i8) -> ()
-    %idx3 = arith.addi %base, %c3 : index
-    %b3 = memref.load %origin[%idx3] : memref<8xi8>
-    func.call @use(%b3) : (i8) -> ()
-    %b0_i32 = arith.extui %b0 : i8 to i32
-    %b1_i32 = arith.extui %b1 : i8 to i32
-    %b2_i32 = arith.extui %b2 : i8 to i32
-    %b3_i32 = arith.extui %b3 : i8 to i32
-    %b1_sh = arith.shli %b1_i32, %c8_i32  : i32
-    %b2_sh = arith.shli %b2_i32, %c16_i32 : i32
-    %b3_sh = arith.shli %b3_i32, %c24_i32 : i32
-    %acc0 = arith.ori %b0_i32, %b1_sh : i32
-    %acc1 = arith.ori %b2_sh, %b3_sh : i32
-    %val = arith.ori %acc0, %acc1 : i32
+    %viewed = memref.view %origin[%c4][] : memref<8xi8> to memref<2xi32>
+    scf.for %i = %c0 to %c2 step %c1 {
+      %val = memref.load %viewed[%i] : memref<2xi32>
+      %val_i8 = arith.trunci %val : i32 to i8
+      func.call @use(%val_i8) : (i8) -> ()
+    }
     func.call @exit(%test_success) : (i32) -> ()
 
     memref.dealloc %origin : memref<8xi8>

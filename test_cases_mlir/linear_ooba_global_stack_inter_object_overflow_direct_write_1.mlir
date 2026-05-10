@@ -11,24 +11,22 @@
 // Access type: direct, write
 // Variant:
 //  - target declared after origin
-//  - distance is checked as is
+//  - distance is negated before checking
 //  - target reached by using a index
-//  - target accessed by using constants
+//  - target accessed by using auxiliary variables
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<188xi8> = dense<170>
+  memref.global @parent : memref<154xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 180 : index
+    %distance = arith.constant 146 : index
     %c1 = arith.constant 1 : index
     %c0xFF = arith.constant 255 : i8
     %c8 = arith.constant 8 : index
@@ -36,16 +34,23 @@ module {
     // locals
 
 
-    %parent = memref.get_global @parent : memref<188xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<188xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[180][8][1] : memref<188xi8> to memref<8xi8, strided<[1], offset: 180>>
+    %parent = memref.get_global @parent : memref<154xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<154xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[146][8][1] : memref<154xi8> to memref<8xi8, strided<[1], offset: 146>>
     %distance_negated = arith.subi %c0, %distance : index
-    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 180>>
+    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 146>>
     func.call @use(%use_val_parent_target) : (i8) -> ()
     %use_val_parent_origin = memref.load %parent_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_parent_origin) : (i8) -> ()
-    scf.for %reach_index = %c0 to %distance step %c1 {
+    %negadist_variant = arith.subi %c0, %distance_negated : index
+    %final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {
+      %cond = arith.cmpi slt, %reach_index, %negadist_variant : index
+      scf.condition(%cond) %reach_index : index
+    } do {
+    ^bb0(%reach_index: index):
       memref.store %c0xFF, %parent_origin[%reach_index] : memref<8xi8, strided<[1], offset: 0>>
+      %next_reach_index = arith.addi %reach_index, %c1 : index
+      scf.yield %next_reach_index : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xFF, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>

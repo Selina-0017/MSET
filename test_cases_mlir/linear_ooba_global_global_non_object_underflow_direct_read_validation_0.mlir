@@ -10,15 +10,13 @@
 // Bug type: non-object, linear OOBA, underflow
 // Access type: direct, read
 // Variant:
-//  - target before origin (underflow)
+//  - target after origin (overflow)
 //  - target reached using a index
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
   memref.global @origin : memref<8xi8> = dense<170>
 
@@ -27,7 +25,6 @@ module {
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
     %distance = arith.constant 9 : index
-    %underflow_dist = arith.constant 9 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0_i32 = arith.constant 0 : i32
@@ -36,10 +33,16 @@ module {
 
     %origin = memref.get_global @origin : memref<8xi8>
     %distance_negated = arith.subi %c0, %distance : index
-    scf.for %reach_index = %c0 to %c0 step %c1 {
-      %index = arith.subi %c0, %reach_index : index
-      %val = memref.load %origin[%index] : memref<8xi8>
+    
+    %final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {
+      %cond = arith.cmpi slt, %reach_index, %c0 : index
+      scf.condition(%cond) %reach_index : index
+    } do {
+    ^bb0(%reach_index: index):
+      %val = memref.load %origin[%reach_index] : memref<8xi8>
       func.call @use(%val) : (i8) -> ()
+      %next_reach_index = arith.subi %reach_index, %c1 : index
+      scf.yield %next_reach_index : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       %val = memref.load %origin[%i] : memref<8xi8>

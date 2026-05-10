@@ -61,7 +61,6 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >DoubleFree::generate(
 
   variant_with_use_after_free.add_variant_description_line("with use-after-free");
 
-  variant_with_use_after_free.add_global("func.func private @exit(%arg0: i32)  -> ()");
   // use function is provided by CodeCanvas by default
   variant_with_use_after_free.add_to_f_body({
     "%c8_df = arith.constant 8 : index",
@@ -88,7 +87,6 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >DoubleFree::generate(
   variant_without_use_after_free.add_test_case_description_line("Access type: " + access_location->get_name() + ", " + access_action->get_name());
 
   variant_without_use_after_free.add_variant_description_line("without use-after-free");
-  variant_without_use_after_free.add_global("func.func private @exit(%arg0: i32) -> ()");
   // use function is provided by CodeCanvas by default
   variant_without_use_after_free.add_to_f_body({
     "%c0 = arith.constant 0 : index",
@@ -143,7 +141,6 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >DoubleFree::generate_validation(
 
   variant_with_use_after_free.add_variant_description_line("with use-after-free");
 
-  variant_with_use_after_free.add_global("func.func private @exit(%arg0: i32) -> ()");
   // use function is provided by CodeCanvas by default
   variant_with_use_after_free.add_to_f_body({
     "%pointer_to_double_free = memref.alloc() : memref<10xi8> // pointer to be double-freed",
@@ -166,7 +163,6 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >DoubleFree::generate_validation(
   variant_without_use_after_free.add_test_case_description_line("Access type: " + access_location->get_name() + ", " + access_action->get_name());
 
   variant_without_use_after_free.add_variant_description_line("without use-after-free");
-  variant_without_use_after_free.add_global("func.func private @exit(%arg0: i32) -> ()");
   // use function is provided by CodeCanvas by default
 
   variant_without_use_after_free.add_to_f_body({

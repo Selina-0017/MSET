@@ -17,8 +17,6 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -49,8 +47,15 @@ module {
     func.call @use(%use_val_s_target) : (i8) -> ()
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
-    scf.for %i = %c0 to %c0 step %c1 {
+    
+    %final_i = scf.while (%i = %c0) : (index) -> index {
+      %cond = arith.cmpi slt, %i, %c0 : index
+      scf.condition(%cond) %i : index
+    } do {
+    ^bb0(%i: index):
       memref.store %c0xFF, %s_target[%i] : memref<8xi8, strided<[1], offset: 8>>
+      %next_i = arith.addi %i, %c1 : index
+      scf.yield %next_i : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xFF, %s_target[%i] : memref<8xi8, strided<[1], offset: 8>>

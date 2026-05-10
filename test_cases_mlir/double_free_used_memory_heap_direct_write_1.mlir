@@ -15,8 +15,6 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -33,8 +31,6 @@ module {
     %tmp = memref.alloc() : memref<8xi8>
     %tmp2 = memref.alloc() : memref<8xi8>
     %pointer_to_double_free = memref.alloc() : memref<8xi8> // pointer to be double-freed
-    %use_val = memref.load %pointer_to_double_free[%c0] : memref<8xi8>
-    func.call @use(%use_val) : (i8) -> ()
     memref.dealloc %pointer_to_double_free : memref<8xi8>
     memref.dealloc %tmp : memref<8xi8> // no use after free required
     memref.dealloc %pointer_to_double_free : memref<8xi8> // double free

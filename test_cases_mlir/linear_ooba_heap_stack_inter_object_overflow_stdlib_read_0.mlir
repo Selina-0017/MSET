@@ -19,8 +19,6 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -31,44 +29,51 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 869 : index
+    %distance = arith.constant 86 : index
     %c1024 = arith.constant 1024 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.alloc() : memref<877xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<877xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[869][8][1] : memref<877xi8> to memref<8xi8, strided<[1], offset: 869>>
+    %parent = memref.alloc() : memref<94xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<94xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[86][8][1] : memref<94xi8> to memref<8xi8, strided<[1], offset: 86>>
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 869>>
+      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 86>>
     }
     %distance_negated = arith.subi %c0, %distance : index
-    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 869>>
+    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 86>>
     func.call @use(%use_val_parent_target) : (i8) -> ()
     %use_val_parent_origin = memref.load %parent_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_parent_origin) : (i8) -> ()
-    %read_value_88 = memref.alloca() : memref<1024xi8>
-    scf.for %i = %c0 to %distance step %c1024 {
+    %read_value_106 = memref.alloca() : memref<1024xi8>
+    
+    %final_i = scf.while (%i = %c0) : (index) -> index {
+      %cond = arith.cmpi slt, %i, %distance : index
+      scf.condition(%cond) %i : index
+    } do {
+    ^bb0(%i: index):
       %remaining = arith.subi %distance, %i : index
       %is_full = arith.cmpi sgt, %remaining, %c1024 : index
       %step = arith.select %is_full, %c1024, %remaining : index
       %src_slice = memref.subview %parent_origin[%i][%step][1] : memref<8xi8, strided<[1], offset: 0>> to memref<?xi8, strided<[1], offset: ?>>
-      %dst_slice = memref.subview %read_value_88[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
+      %dst_slice = memref.subview %read_value_106[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
       memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>
+      %next_i = arith.addi %i, %c1024 : index
+      scf.yield %next_i : index
     }
-    %use_val_read_value_88 = memref.load %read_value_88[%c0] : memref<1024xi8>
-    func.call @use(%use_val_read_value_88) : (i8) -> ()
-    %read_value_90 = memref.alloca() : memref<8xi8>
-    memref.copy %parent_origin, %read_value_90 : memref<8xi8, strided<[1], offset: 0>> to memref<8xi8>
-    %use_val_read_value_90 = memref.load %read_value_90[%c0] : memref<8xi8>
-    func.call @use(%use_val_read_value_90) : (i8) -> ()
+    %use_val_read_value_106 = memref.load %read_value_106[%c0] : memref<1024xi8>
+    func.call @use(%use_val_read_value_106) : (i8) -> ()
+    %read_value_108 = memref.alloca() : memref<8xi8>
+    memref.copy %parent_origin, %read_value_108 : memref<8xi8, strided<[1], offset: 0>> to memref<8xi8>
+    %use_val_read_value_108 = memref.load %read_value_108[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_108) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
-    memref.dealloc %parent : memref<877xi8>
+    memref.dealloc %parent : memref<94xi8>
     return %c0_i32 : i32
   }
 

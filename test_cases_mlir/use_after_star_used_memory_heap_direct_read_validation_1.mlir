@@ -12,60 +12,52 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
-  memref.global @target_address : memref<1xindex>
-  memref.global @target_ptr : memref<1xmemref<8xi8>>
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
+  %c0_v = arith.constant 0 : index
+  %c8_v = arith.constant 8 : index
+  %c0_loop = arith.constant 0 : index
+  %c1_loop = arith.constant 1 : index
+  %c_max_loop = arith.constant 100 : index
+  %ctrue_loop = arith.constant 1 : i1
     %c0 = arith.constant 0 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
-  %cMAX = arith.constant 100 : index
-  %false = arith.constant false
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
     %target = memref.alloc() : memref<8xi8>
-    scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xAA, %target[%i] : memref<8xi8>
-    }
-  %target_addr = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-  %global_addr = memref.get_global @target_address : memref<1xindex>
-  memref.store %target_addr, %global_addr[%c0] : memref<1xindex>
-  %global_ptr = memref.get_global @target_ptr : memref<1xmemref<8xi8>>
-  memref.store %target, %global_ptr[%c0] : memref<1xmemref<8xi8>>
-    %reallocated_out = memref.alloc() : memref<8xi8>
+    
+  %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
+    %reallocated = memref.alloc() : memref<8xi8>
 
-  memref.dealloc %reallocated_out : memref<8xi8>
-  %counter_final, %matched_final = scf.while (%counter = %c0, %matched = %false) : (index, i1) -> (index, i1) {
-    %lt = arith.cmpi slt, %counter, %cMAX : index
-    scf.condition(%lt) %counter, %matched : index, i1
+  %reallocated_while, %counter_while = scf.while (%reallocated_iter = %reallocated, %counter_iter = %c0_loop)
+      : (memref<8xi8>, index) -> (memref<8xi8>, index) {
+    %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index
+    scf.condition(%continue_while) %reallocated_iter, %counter_iter : memref<8xi8>, index
   } do {
-    ^bb0(%counter_iter : index, %matched_iter : i1):
-      %reallocated = memref.alloc() : memref<8xi8>
-      scf.for %i = %c0 to %c8 step %c1 {
-        memref.store %c0xAA, %reallocated[%i] : memref<8xi8>
-      }
-      memref.dealloc %reallocated : memref<8xi8>
-      %next_counter = arith.addi %counter_iter, %c1 : index
-      scf.yield %next_counter, %matched_iter : index, i1
+  ^bb0(%reallocated_loop : memref<8xi8>, %counter_loop : index):
+    memref.dealloc %reallocated_loop : memref<8xi8>
+    %new_reallocated = memref.alloc() : memref<8xi8>
+    scf.for %i = %c0 to %c8 step %c1 {
+      memref.store %c0xAA, %new_reallocated[%i] : memref<8xi8>
+    }
+    %next_counter_loop = arith.addi %counter_loop, %c1_loop : index
+    scf.yield %new_reallocated, %next_counter_loop : memref<8xi8>, index
   }
-  %global_ptr_access = memref.get_global @target_ptr : memref<1xmemref<8xi8>>
-  %saved_ptr = memref.load %global_ptr_access[%c0] : memref<1xmemref<8xi8>>
   scf.for %i = %c0 to %c8 step %c1 {
-    %val = memref.load %saved_ptr[%i] : memref<8xi8>
+    %val = memref.load %view_target[%i] : memref<?xi8>
     func.call @use(%val) : (i8) -> ()
   }
   func.call @exit(%test_success) : (i32) -> ()
 
     memref.dealloc %target : memref<8xi8>
-    memref.dealloc %reallocated_out : memref<8xi8>
+    memref.dealloc %reallocated : memref<8xi8>
     return %c0_i32 : i32
   }
 

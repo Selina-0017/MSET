@@ -11,44 +11,33 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
-  memref.global @target_address : memref<1xindex>
-  memref.global @target_ptr : memref<1xmemref<8xi8>>
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-    %c0 = arith.constant 0 : index
-    %c1 = arith.constant 1 : index
-    %c8 = arith.constant 8 : index
-    %c0xAA = arith.constant 170 : i8
+  %c0_v = arith.constant 0 : index
+  %c8_v = arith.constant 8 : index
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  %c8 = arith.constant 8 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
     %target = memref.alloc() : memref<8xi8>
-    scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xAA, %target[%i] : memref<8xi8>
-    }
-  %target_addr = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-  %global_addr = memref.get_global @target_address : memref<1xindex>
-  memref.store %target_addr, %global_addr[%c0] : memref<1xindex>
-  %global_ptr = memref.get_global @target_ptr : memref<1xmemref<8xi8>>
-  memref.store %target, %global_ptr[%c0] : memref<1xmemref<8xi8>>
-    %reallocated_out = memref.alloc() : memref<8xi8>
+    
+  %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
+    %reallocated = memref.alloc() : memref<8xi8>
 
-  %global_ptr_main = memref.get_global @target_ptr : memref<1xmemref<8xi8>>
-  %saved_ptr = memref.load %global_ptr_main[%c0] : memref<1xmemref<8xi8>>
   scf.for %i = %c0 to %c8 step %c1 {
-    %val = memref.load %saved_ptr[%i] : memref<8xi8>
+    %val = memref.load %view_target[%i] : memref<?xi8>
     func.call @use(%val) : (i8) -> ()
   }
   func.call @exit(%test_success) : (i32) -> ()
 
     memref.dealloc %target : memref<8xi8>
-    memref.dealloc %reallocated_out : memref<8xi8>
+    memref.dealloc %reallocated : memref<8xi8>
     return %c0_i32 : i32
   }
 

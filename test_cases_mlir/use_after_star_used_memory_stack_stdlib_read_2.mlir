@@ -12,45 +12,41 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
-  memref.global @target_addresses : memref<16xindex>
-  memref.global @target_arr : memref<1xmemref<16x8xi8>>
   func.func private @exit(%arg0: i32) -> ()
+  memref.global @last_address : memref<8xi8> = dense<0>
+  memref.global @target_addresses : memref<16x8xi8> = dense<0>
 
   func.func @other_f() -> i32 {
-  %precond_fail = arith.constant 43 : i32
   %test_success = arith.constant 42 : i32
-  %c_arr = arith.constant 16 : index
+  %precond_fail = arith.constant 43 : i32
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
-  %false = arith.constant false
+  %c8 = arith.constant 8 : index
+  %c16 = arith.constant 16 : index
+  %cfalse = arith.constant 0 : i1
     %c0_i32 = arith.constant 0 : i32
     // locals
     %reallocated = memref.alloca() : memref<8xi8>
-  %realloc_addr = memref.extract_aligned_pointer_as_index %reallocated : memref<8xi8> -> index
-  %global_addrs_other = memref.get_global @target_addresses : memref<16xindex>
-  %result:2 = scf.for %i = %c0 to %c_arr step %c1 iter_args(%found = %false, %idx = %c0) -> (i1, index) {
-    %target_addr = memref.load %global_addrs_other[%i] : memref<16xindex>
-    %eq = arith.cmpi eq, %realloc_addr, %target_addr : index
-    %next_found = arith.ori %found, %eq : i1
-    %next_idx = arith.select %eq, %i, %idx : index
-    scf.yield %next_found, %next_idx : i1, index
+  %view_target = memref.get_global @target_addresses : memref<16x8xi8>
+  %found = scf.for %counter = %c0 to %c16 step %c1 iter_args(%found_iter = %cfalse) -> (i1) {
+    %realloc_ptr = memref.extract_aligned_pointer_as_index %reallocated : memref<8xi8> -> index
+    %target_base = memref.extract_aligned_pointer_as_index %view_target : memref<16x8xi8> -> index
+    %offset = arith.muli %counter, %c8 : index
+    %target_ptr = arith.addi %target_base, %offset : index
+    %eq = arith.cmpi eq, %realloc_ptr, %target_ptr : index
+    %found_next = arith.ori %found_iter, %eq : i1
+    scf.yield %found_next : i1
   }
-  scf.if %result#0 {
-    %global_arr_access = memref.get_global @target_arr : memref<1xmemref<16x8xi8>>
-    %target_loaded = memref.load %global_arr_access[%c0] : memref<1xmemref<16x8xi8>>
-  %read_value_36 = memref.alloca() : memref<1x8xi8>
-  %subview_tmp = memref.subview %target_loaded[%result#1, 0][1, 8][1, 1] : memref<16x8xi8> to memref<1x8xi8, strided<[8, 1], offset: ?>>
-  memref.copy %subview_tmp, %read_value_36 : memref<1x8xi8, strided<[8, 1], offset: ?>> to memref<1x8xi8>
-  %use_val_read_value_36 = memref.load %read_value_36[%c0, %c0] : memref<1x8xi8>
-  func.call @use(%use_val_read_value_36) : (i8) -> ()
-    func.call @exit(%test_success) : (i32) -> ()
-    scf.yield
+  scf.if %found {
   } else {
     func.call @exit(%precond_fail) : (i32) -> ()
-    scf.yield
   }
+  %read_value_35 = memref.alloca() : memref<1x8xi8>
+  %subview_tmp = memref.subview %view_target[%c0, 0][1, 8][1, 1] :memref<16x8xi8> to memref<1x8xi8, strided<[8, 1], offset: ?>>
+  memref.copy %subview_tmp, %read_value_35 : memref<1x8xi8, strided<[8, 1], offset: ?>> to memref<1x8xi8>
+  %use_val_read_value_35 = memref.load %read_value_35[%c0, %c0] : memref<1x8xi8>
+  func.call @use(%use_val_read_value_35) : (i8) -> ()
+  func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32
   }
@@ -62,6 +58,8 @@ module {
     %c_arr = arith.constant 16 : index
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
+  %c0_v = arith.constant 0 : index
+  %c8_v = arith.constant 8 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
@@ -72,15 +70,7 @@ module {
         memref.store %c0xAA, %target[%i, %j] : memref<16x8xi8>
       }
     }
-  %global_arr = memref.get_global @target_arr : memref<1xmemref<16x8xi8>>
-  memref.store %target, %global_arr[%c0] : memref<1xmemref<16x8xi8>>
-  %base_addr = memref.extract_aligned_pointer_as_index %target : memref<16x8xi8> -> index
-  %global_addrs = memref.get_global @target_addresses : memref<16xindex>
-  scf.for %i = %c0 to %c_arr step %c1 {
-    %offset = arith.muli %i, %c8 : index
-    %row_addr = arith.addi %base_addr, %offset : index
-    memref.store %row_addr, %global_addrs[%i] : memref<16xindex>
-  }
+  %view_target = memref.subview %target[0,0][16,8][1,1] : memref<16x8xi8> to memref<16x8xi8>
 
     return %c0_i32 : i32
   }

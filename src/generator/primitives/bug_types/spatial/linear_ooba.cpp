@@ -49,7 +49,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
     return 42;
   */
   CodeCanvas variant;
-  variant.add_global("func.func private @exit(%arg0: i32) -> ()");
   // use function is provided by CodeCanvas by default
 
   variant.add_test_case_description_line("Origin: " + origin->get_name());
@@ -67,22 +66,22 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
 
   for ( auto &origin_target_canvas : origin_target_canvases )
   {
-    if ( origin_target_canvas->get_forces_underflow() && !is_a<Underflow>(flow) )
-         continue; // the origin-target requires an underflow, but the flow is not an underflow -> skip
+    if ( origin_target_canvas->get_forces_underflow() && !is_a<Underflow>(flow) ) continue; // the origin-target requires an underflow, but the flow is not an underflow -> skip
 
-    // For intra-object linear OOBA, the relative position should be determined by flow:
-    // Overflow -> target after origin (positive distance)
-    // Underflow -> target before origin (negative distance)
-    ssize_t static_dist = origin_target_canvas->get_distance_static_value();
-    if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
-    if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
+    // ssize_t static_dist = origin_target_canvas->get_distance_static_value();
+    // if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
+    // if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
 
-    std::vector< std::tuple< std::string, std::string > > distance_variants;
-    if ( flow->accepts_static_distance(static_dist) )
-      distance_variants.push_back({ origin_target_canvas->get_distance(), "distance is checked as is" });
-    if ( origin_target_canvas->get_distance_negated() != "N/A" && flow->accepts_static_distance(-static_dist) )
-      distance_variants.push_back({ origin_target_canvas->get_distance_negated(), "distance is negated before checking" });
-    for ( auto &distance_variant : distance_variants )
+    // std::vector< std::tuple< std::string, std::string > > distance_variants;
+    // if ( flow->accepts_static_distance(static_dist) )
+    //   distance_variants.push_back({ origin_target_canvas->get_distance(), "distance is checked as is" });
+    // if ( origin_target_canvas->get_distance_negated() != "N/A" && flow->accepts_static_distance(-static_dist) )
+    //   distance_variants.push_back({ origin_target_canvas->get_distance_negated(), "distance is negated before checking" });
+    std::vector< std::tuple< std::string, std::string > > distance_variants = {
+      std::tuple< std::string, std::string >{ origin_target_canvas->get_distance(), "distance is checked as is" },
+      std::tuple< std::string, std::string >{ origin_target_canvas->get_distance_negated(), "distance is negated before checking" }
+    };
+      for ( auto &distance_variant : distance_variants )
     {
       std::string distance = std::get<0>(distance_variant);
       std::string distance_description = std::get<1>(distance_variant);
@@ -106,13 +105,11 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
       std::vector<AccessLocation::SplitAccess> reach_target_codes;
       if (!distance_statically_known)
       {
-        {
           bool needs_strided = !is_a<NonObject>(origin_target_relation);
           reach_target_codes = access_location->generate_bulk_split_all(
               access_action, origin_target_canvas_copy->get_origin_name(), origin_target_canvas_copy->get_target_name(), distance,
               generate_preconditions_check_distance, generate_preconditions_check_in_range, generate_counter_update, needs_strided, origin_offset
-            );
-        }
+            );        
         origin_target_canvas_copy->add_variant_description_line( distance_description );
       }
       else
@@ -125,7 +122,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
           bool needs_strided = !is_a<NonObject>(origin_target_relation);
           std::vector<AccessLocation::SplitAccess> access_target_codes = access_location->generate_split_all(
             access_action,
-            origin_target_canvas_copy->get_target_name(),
+            origin_target_canvas_copy->get_origin_name(),
             origin_target_canvas_copy->get_target_size(),generate_counter_update,distance, needs_strided, target_offset);
           for ( auto &access_target_code : access_target_codes )
           {
@@ -140,20 +137,19 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
             full_variants.push_back(origin_target_canvas_with_access);
           }
           continue;
-        }
-        {
+        }        
           bool needs_strided = !is_a<NonObject>(origin_target_relation);
           reach_target_codes = access_location->generate_bulk_split_all(
             access_action,origin_target_canvas_copy->get_origin_name(), origin_target_canvas_copy->get_target_name(), distance,
             generate_preconditions_check_distance, generate_preconditions_check_in_range, generate_counter_update, needs_strided, origin_offset
           );
-        }
         origin_target_canvas_copy->add_variant_description_line( distance_description );
       }
 
 
       for ( auto &reach_target_code : reach_target_codes )
       {
+        if ( reach_target_code.description != "index" ) continue;
         bool needs_strided = !is_a<NonObject>(origin_target_relation);
         std::vector<AccessLocation::SplitAccess> access_target_codes = access_location->generate_split_all(
           access_action,
@@ -162,6 +158,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
         );
         for ( auto &access_target_code : access_target_codes )
         {
+          if ( access_target_code.description != "auxiliary variables" ) continue;
           auto origin_target_canvas_with_access = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas_copy);
           std::string target_type_suffix = needs_strided ? ", strided<[1], offset: " + target_offset + ">>" : ">";
           std::string origin_type_suffix = needs_strided ? ", strided<[1], offset: " + origin_offset + ">>" : ">";
@@ -207,7 +204,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
     return 42;
   */
   CodeCanvas variant;
-  variant.add_global("func.func private @exit(%arg0: i32) -> ()");
   // use function is provided by CodeCanvas by default
 
   auto generate_counter_update = std::bind(&Flow::generate_counter_update, flow.get(), std::placeholders::_1);
@@ -227,9 +223,9 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
     // For intra-object linear OOBA, the relative position should be determined by flow:
     // Overflow -> target after origin (positive distance)
     // Underflow -> target before origin (negative distance)
-    ssize_t static_dist = origin_target_canvas->get_distance_static_value();
-    if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
-    if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
+    // ssize_t static_dist = origin_target_canvas->get_distance_static_value();
+    // if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
+    // if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
 
     std::string var_name_to_access;
     std::string var_offset = "0";
@@ -244,15 +240,15 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
     {
       var_name_to_access = origin_target_canvas->get_origin_name();
     }
-
+    ssize_t static_dist = origin_target_canvas->get_distance_static_value();
     std::string origin_offset_val = static_dist > 0 ? "0" : std::to_string(std::abs(static_dist));
     std::string target_offset_val = static_dist > 0 ? std::to_string(static_dist) : "0";
     std::vector< std::string > distance_variants = { "0" };
     for ( auto &distance_variant : distance_variants )
     {
-      if ( distance_variant == "N/A" ) continue;
       ssize_t distance_as_static_number;
       bool distance_statically_known = false;
+      if ( distance_variant == "N/A" ) continue;
       if ( is_number(distance_variant) )
       {
         distance_as_static_number = std::stoll(distance_variant);
@@ -283,12 +279,10 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
       {
         bool needs_strided = !is_a<NonObject>(origin_target_relation);
         AccessLocation::SplitAccess reach_target_code;
-        {
-          reach_target_code = access_location->generate_bulk_split_using_index(
-            access_action, var_name_to_access, var_name_to_access, distance_variant,
+        reach_target_code = access_location->generate_bulk_split_using_index(
+          access_action, var_name_to_access, var_name_to_access, distance_variant,
             nullptr, nullptr, generate_counter_update, needs_strided, var_offset
           );
-        }
 
         std::vector<std::string> access_target_code = access_location->generate(
           access_action,

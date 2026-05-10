@@ -11,15 +11,12 @@
 // Access type: direct, write
 // Variant:
 //  - target after origin (overflow)
-//  - manual i32 assembly from 4 bytes
-//  - using a global index
+//  - using memref.view to big type
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
   memref.global @origin : memref<8xi8> = dense<170>
 
@@ -30,35 +27,23 @@ module {
     %distance = arith.constant 9 : index
     %c1 = arith.constant 1 : index
     %c2 = arith.constant 2 : index
-    %c3 = arith.constant 3 : index
-    %c8_i32 = arith.constant 8 : i32
-    %c16_i32 = arith.constant 16 : i32
-    %c24_i32 = arith.constant 24 : i32
-    %c0xDEADBEEF = arith.constant 3735928559 : i32
+    %c4 = arith.constant 4 : index
+    %c0xFFFFFFFF = arith.constant 4294967295 : i32
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
     %origin = memref.get_global @origin : memref<8xi8>
     %distance_negated = arith.subi %c0, %distance : index
-    scf.for %i = %c0 to %distance step %c1 {
-      %val = memref.load %origin[%i] : memref<8xi8>
-      func.call @use(%val) : (i8) -> ()
+    %viewed = memref.view %origin[%c0][%c2] : memref<8xi8> to memref<?xi32>
+    %distance_div_4 = arith.divsi %distance, %c4 : index
+    scf.for %i = %c0 to %distance_div_4 step %c1 {
+      memref.store %c0xFFFFFFFF, %viewed[%i] : memref<?xi32>
     }
-    %b0 = arith.trunci %c0xDEADBEEF : i32 to i8
-    %w1_tmp = arith.shrsi %c0xDEADBEEF, %c8_i32  : i32
-    %w2_tmp = arith.shrsi %c0xDEADBEEF, %c16_i32 : i32
-    %w3_tmp = arith.shrsi %c0xDEADBEEF, %c24_i32 : i32
-    %b1 = arith.trunci %w1_tmp : i32 to i8
-    %b2 = arith.trunci %w2_tmp : i32 to i8
-    %b3 = arith.trunci %w3_tmp : i32 to i8
-    memref.store %b0, %origin[%distance] : memref<8xi8>
-    %idx1 = arith.addi %distance, %c1 : index
-    memref.store %b1, %origin[%idx1] : memref<8xi8>
-    %idx2 = arith.addi %distance, %c2 : index
-    memref.store %b2, %origin[%idx2] : memref<8xi8>
-    %idx3 = arith.addi %distance, %c3 : index
-    memref.store %b3, %origin[%idx3] : memref<8xi8>
+    scf.for %j = %c0 to %c2 step %c1 {
+      %idx = arith.addi %j, %distance_div_4 : index
+      memref.store %c0xFFFFFFFF, %viewed[%idx] : memref<?xi32>
+    }
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

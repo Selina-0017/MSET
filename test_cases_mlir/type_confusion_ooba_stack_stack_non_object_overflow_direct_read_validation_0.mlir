@@ -11,15 +11,13 @@
 // Access type: direct, read
 // Variant:
 //  - target after origin (overflow)
-//  - using reinterpret_cast to large memref
+//  - normal access to target
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
-  func.func private @exit(%arg0: i32)
+  func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
     %c0 = arith.constant 0 : index
@@ -36,14 +34,14 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
+
+    %distance_negated = arith.subi %c0, %distance : index
     scf.for %j = %c0 to %c8 step %c1 {
       %idx = arith.addi %j, %c0 : index
       %val = memref.load %origin[%idx] : memref<8xi8>
       func.call @use(%val) : (i8) -> ()
     }
     func.call @exit(%test_success) : (i32) -> ()
-
-    %distance_negated = arith.subi %c0, %distance : index
 
     return %c0_i32 : i32
   }

@@ -10,6 +10,9 @@
 #include "misc.h"
 #include "generator/primitives/bug_types/temporal/memory_state/used.h"
 #include "generator/primitives/regions/heap_region.h"
+#include "generator/primitives/regions/stack_region.h"
+#include <string>
+#include <vector>
 
 MisuseOfFree::MisuseOfFree():
   TemporalBugType("misuse_of_free")
@@ -40,32 +43,11 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >MisuseOfFree::generate(
 {
   std::vector< std::shared_ptr<RegionCodeCanvas> > full_variants;
   /*
-    %target = memref.alloc() : memref<160xi8>
-    memref.store %c_magic, %target[%c8] : memref<160xi8>
-    memref.store %c0x40, %target[%c104] : memref<160xi8>
-    %crafted = memref.subview %target[16][8][1] : memref<160xi8> to memref<8xi8, strided<[1], offset: 16>>
-    %_ = memref.alloc() : memref<8xi8>
-    %target_ptr_free = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index
-    %c16_free = arith.constant 16 : index
-    %crafted_addr_free = arith.addi %target_ptr_free, %c16_free : index
-    %crafted_i64_free = arith.index_cast %crafted_addr_free : index to i64
-    %crafted_llvm_free = llvm.inttoptr %crafted_i64_free : i64 to !llvm.ptr
-    llvm.call @free(%crafted_llvm_free) : (!llvm.ptr) -> ()
-
-    %heap_obj = memref.alloc() : memref<8xi8>
-
-    scf.if %eq_cmp { // only for unused heap
-      <action>
-    }
-
-    func.return %test_success : i32
-    memref.dealloc %target : memref<160xi8>
   */
 
   CodeCanvas code;
-  code.add_global("func.func private @exit(%arg0: i32) -> ()");
-  code.add_global("llvm.func @free(!llvm.ptr) -> ()");
-
+  code.add_global("func.func @fake_free(%arg0: i8) -> () {func.return}");
+  code.add_global("memref.global @heap_obj : memref<8xi8> = uninitialized");
   code.add_test_case_description_line("Memory region: " + memory_region->get_name());
   code.add_test_case_description_line("Bug type: misuse-of-free, " + memory_state->get_printable_name());
   code.add_test_case_description_line("Access type: " + access_location->get_name() + ", " + access_action->get_name());
@@ -79,62 +61,70 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >MisuseOfFree::generate(
 
     region_canvas_with_magic_value->add_variant_description_line("magic value " + magic_value);
 
-    region_canvas_with_magic_value->add_during_lifetime({
-      "%c8_mof = arith.constant 8 : index",
-      "%c104_mof = arith.constant 104 : index",
-      "%c_magic = arith.constant " + std::to_string(std::stoi(magic_value, nullptr, 16)) + " : i8",
-      "%c0x40 = arith.constant 64 : i8",
-      "memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value",
-      "memref.store %c0x40, %target[%c104_mof] : memref<160xi8>",
-      "%crafted = memref.subview %target[16][8][1] : memref<160xi8> to memref<8xi8, strided<[1], offset: 16>>",
-      "%_ = memref.alloc() : memref<8xi8>",
-      "%target_ptr_free = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index",
-      "%c16_free = arith.constant 16 : index",
-      "%crafted_addr_free = arith.addi %target_ptr_free, %c16_free : index",
-      "%crafted_i64_free = arith.index_cast %crafted_addr_free : index to i64",
-      "%crafted_llvm_free = llvm.inttoptr %crafted_i64_free : i64 to !llvm.ptr",
-      "llvm.call @free(%crafted_llvm_free) : (!llvm.ptr) -> ()",
+      region_canvas_with_magic_value->add_during_lifetime({
+      "  %c8_mof = arith.constant 8 : index",
+      "  %c0 = arith.constant 0 : index",
+      "  %c104_mof = arith.constant 104 : index",
+      "  %c_magic = arith.constant " + std::to_string(std::stoi(magic_value, nullptr, 16)) + " : i8",
+      "  %c0x40 = arith.constant 64 : i8",
+      "  memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value",
+      "  memref.store %c0x40, %target[%c104_mof] : memref<160xi8>",
+      "  %crafted = memref.view %target[%c104_mof][%c8_mof] : memref<160xi8> to memref<?xi8>",
+      "  %_ = memref.alloc() : memref<8xi8>",
+      "  %craft_val = memref.load %crafted[%c0] : memref<?xi8>",
+      "  func.call @fake_free(%craft_val) : (i8) -> ()",
       "",
-      "%heap_obj = memref.alloc() : memref<8xi8>"
+      "  %heap_obj = memref.get_global @heap_obj : memref<8xi8>"
     });
     std::vector<std::string> access_type_code = access_location->generate(
       access_action, "heap_obj", 8);
     CodeCanvas::code_pos_t index;
     if (is_a<UsedMemory>(memory_state))
     {
-      index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_lifetime_pos(), access_type_code, "  ");
+      if (std::dynamic_pointer_cast<StackRegion>(memory_region))
+      {
+        // stack: insert after f() returns in main
+        access_type_code.insert(access_type_code.begin(), "%heap_obj = memref.get_global @heap_obj : memref<8xi8>");
+        access_type_code.insert(access_type_code.begin(), "%test_success = arith.constant 42 : i32");
+        index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_f_call_pos() + 1, access_type_code, "  ");
+      }
+      else
+      {
+        index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_lifetime_pos(), access_type_code, "  ");
+      }
     }
     else
     {
       if ( std::dynamic_pointer_cast<HeapRegion>(memory_region) )
       {
-        // unused heap memory: conditionally dealloc target, access is outside if
-        std::vector<std::string> cmp_and_if = {
-          "%target_addr_cmp = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index",
-          "%c16_cmp = arith.constant 16 : index",
-          "%crafted_addr_cmp = arith.addi %target_addr_cmp, %c16_cmp : index",
-          "%eq_cmp = arith.cmpi eq, %target_addr_cmp, %crafted_addr_cmp : index",
-          "scf.if %eq_cmp {"
-        };
-        // Insert comparison and if-start before deallocation
+        // unused heap memory
         region_canvas_with_magic_value->add_at(
           region_canvas_with_magic_value->get_deallocation_pos() - 1,
-          cmp_and_if,
-          "  "
-        );
-        // Insert closing brace after deallocation
-        auto after_brace = region_canvas_with_magic_value->add_at(
+          std::vector<std::string>{
+            "%target_ptr = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index",
+            "%crafted_ptr = memref.extract_aligned_pointer_as_index %crafted : memref<?xi8> -> index",
+            "%eq = arith.cmpi eq, %target_ptr, %crafted_ptr : index",
+            "%ctrue = arith.constant 1 : i1",
+            "%neq = arith.xori %eq, %ctrue : i1",
+            "scf.if %neq {"
+          },
+          "    "
+          );
+        index = region_canvas_with_magic_value->add_at(
           region_canvas_with_magic_value->get_deallocation_pos(),
-          "}",
+          std::vector<std::string>{
+            "}"
+          },
           "  "
         );
-        // Insert access code after the if block
-        index = region_canvas_with_magic_value->add_at(after_brace, access_type_code, "  ");
+        index = region_canvas_with_magic_value->add_at(index, access_type_code, "    ");
       }
       else
       {
-        // unused memory, but not on heap (stack has no deallocation_pos, use lifetime_pos instead)
-        index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_lifetime_pos(), access_type_code, "  ");
+        // stack: insert after f() returns in main
+        access_type_code.insert(access_type_code.begin(), "%test_success = arith.constant 42 : i32");
+        access_type_code.insert(access_type_code.begin(), "%heap_obj = memref.get_global @heap_obj : memref<8xi8>");
+        index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_f_call_pos() + 1, access_type_code, "  ");
       }
     }
     region_canvas_with_magic_value->add_at(index, "func.call @exit(%test_success) : (i32) -> ()", "  ");
@@ -154,22 +144,11 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >MisuseOfFree::generate_validatio
 {
   std::vector< std::shared_ptr<RegionCodeCanvas> > full_variants;
   /*
-    %target = memref.alloc() : memref<160xi8>
-    memref.store %c_magic, %target[%c8] : memref<160xi8>
-    memref.store %c0x40, %target[%c104] : memref<160xi8>
-    %crafted = memref.subview %target[16][8][1] : memref<160xi8> to memref<8xi8, strided<[1], offset: 16>>
-    %_ = memref.alloc() : memref<8xi8>
-
-    %heap_obj = memref.alloc() : memref<8xi8>
-
-    <action>
-
-    func.return %test_success : i32
-    memref.dealloc %target : memref<160xi8>
+    
   */
 
   CodeCanvas code;
-  code.add_global("func.func private @exit(%arg0: i32) -> ()");
+  code.add_global("memref.global @heap_obj : memref<8xi8> = uninitialized");
   code.add_test_case_description_line("Memory region: " + memory_region->get_name());
   code.add_test_case_description_line("Bug type: misuse-of-free, " + memory_state->get_printable_name());
   code.add_test_case_description_line("Access type: " + access_location->get_name() + ", " + access_action->get_name());
@@ -184,24 +163,35 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >MisuseOfFree::generate_validatio
 
     region_canvas_with_magic_value->add_variant_description_line("magic value " + magic_value);
 
-    region_canvas_with_magic_value->add_during_lifetime({
-      "%c8_mof = arith.constant 8 : index",
-      "%c104_mof = arith.constant 104 : index",
-      "%c_magic = arith.constant " + std::to_string(std::stoi(magic_value, nullptr, 16)) + " : i8",
-      "%c0x40 = arith.constant 64 : i8",
-      "memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value",
-      "memref.store %c0x40, %target[%c104_mof] : memref<160xi8>",
-      "%crafted = memref.subview %target[16][8][1] : memref<160xi8> to memref<8xi8, strided<[1], offset: 16>>",
-      "%_ = memref.alloc() : memref<8xi8>",
+      region_canvas_with_magic_value->add_during_lifetime({
+      "  %c8_mof = arith.constant 8 : index",
+      "  %c0 = arith.constant 0 : index",
+      "  %c104_mof = arith.constant 104 : index",
+      "  %c_magic = arith.constant " + std::to_string(std::stoi(magic_value, nullptr, 16)) + " : i8",
+      "  %c0x40 = arith.constant 64 : i8",
+      "  memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value",
+      "  memref.store %c0x40, %target[%c104_mof] : memref<160xi8>",
+      "  %crafted = memref.view %target[%c104_mof][%c8_mof] : memref<160xi8> to memref<?xi8>",
+      "  %_ = memref.alloc() : memref<8xi8>",
       "",
-      "%heap_obj = memref.alloc() : memref<8xi8>"
+      "  %heap_obj = memref.get_global @heap_obj : memref<8xi8>"
     });
     std::vector<std::string> access_type_code = access_location->generate(
       access_action, "heap_obj", 8);
     CodeCanvas::code_pos_t index;
     if (is_a<UsedMemory>(memory_state))
     {
-      index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_lifetime_pos(), access_type_code, "  ");
+      if (std::dynamic_pointer_cast<StackRegion>(memory_region))
+      {
+        // stack: insert after f() returns in main
+        access_type_code.insert(access_type_code.begin(), "%test_success = arith.constant 42 : i32");
+        access_type_code.insert(access_type_code.begin(), "%heap_obj = memref.get_global @heap_obj : memref<8xi8>");
+        index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_f_call_pos() + 1, access_type_code, "  ");
+   }
+      else
+      {
+        index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_lifetime_pos(), access_type_code, "  ");
+      }
     }
     else
     {
@@ -211,7 +201,10 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >MisuseOfFree::generate_validatio
       }
       else
       {
-        index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_lifetime_pos(), access_type_code, "  ");
+       // stack: insert after f() returns in main
+        access_type_code.insert(access_type_code.begin(), "%test_success = arith.constant 42 : i32");
+        access_type_code.insert(access_type_code.begin(), "%heap_obj = memref.get_global @heap_obj : memref<8xi8>");
+        index = region_canvas_with_magic_value->add_at(region_canvas_with_magic_value->get_f_call_pos() + 1, access_type_code, "  ");
       }
     }
     region_canvas_with_magic_value->add_at(index, "func.call @exit(%test_success) : (i32) -> ()", "  ");

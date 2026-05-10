@@ -11,15 +11,13 @@
 // Access type: direct, write
 // Variant:
 //  - target after origin (overflow)
-//  - using load widening
+//  - normal access to target via offset
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
-  func.func private @exit(%arg0: i32)
+  func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
@@ -29,7 +27,6 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %distance = arith.constant 9 : index
-    %idx = arith.constant 7 : index
     %c0xFF = arith.constant 255 : i8
     %c0_i32 = arith.constant 0 : i32
     // locals
@@ -40,7 +37,10 @@ module {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
     %distance_negated = arith.subi %c0, %distance : index
-    memref.store %c0xFF, %origin[%idx] : memref<8xi8>
+    scf.for %j = %c0 to %c8 step %c1 {
+      %idx = arith.addi %j, %c0 : index
+      memref.store %c0xFF, %origin[%idx] : memref<8xi8>
+    }
     func.call @exit(%test_success) : (i32) -> ()
 
     memref.dealloc %origin : memref<8xi8>

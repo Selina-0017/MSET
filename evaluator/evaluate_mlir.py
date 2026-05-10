@@ -468,6 +468,8 @@ _DETECTION_KEYWORDS = {
     "is out of logical bounds",
     "is out of bounds",
     "Element type mismatch",
+    "double free:",
+    "use-after-free:",
 }
 
 
@@ -619,6 +621,7 @@ def process_results(
     raw_spatial: Dict[str, List[ExecResult]],
     raw_overall: List[ExecResult],
     verbose: bool,
+    skipped: int = 0,
 ):
     if verbose:
         temporal_categories = [
@@ -657,6 +660,8 @@ def process_results(
 
     print("Overall results:")
     print_results(raw_overall)
+    if skipped > 0:
+        print(f"Skipped {skipped} misuse-of-free variants.")
 
 
 
@@ -689,9 +694,13 @@ def evaluate_all(
 
     # Parse and group by test case key
     grouped: Dict[str, List[TestCaseInformation]] = defaultdict(list)
+    skipped_variants = 0
     for f in mlir_files:
         tc = construct_from_file_name(f.name, str(f))
         if tc is None:
+            continue
+        if isinstance(tc, TemporalTestCaseInformation) and tc.temporal_bug_name == "Misuse-of-free":
+            skipped_variants += 1
             continue
         grouped[tc.get_test_case_key()].append(tc)
 
@@ -702,6 +711,8 @@ def evaluate_all(
     total_groups = len(grouped)
     total_variants = sum(len(v) for v in grouped.values())
     print(f"Found {total_groups} test cases, {total_variants} variants.")
+    if skipped_variants > 0:
+        print(f"Skipped {skipped_variants} misuse-of-free variants.")
 
     # Build work items
     tmp_base = Path(tempfile.gettempdir()) / "mset_mlir_eval"
@@ -804,6 +815,7 @@ def evaluate_all(
         raw_temporal_results,
         raw_spatial_results,
         raw_overall_results,
+        skipped_variants,
     )
 
 
@@ -863,6 +875,7 @@ def main():
         raw_temporal,
         raw_spatial,
         raw_overall,
+        skipped,
     ) = evaluate_all(
         args.test_cases_dir,
         args.config,
@@ -878,6 +891,7 @@ def main():
         raw_spatial,
         raw_overall,
         args.verbose,
+        skipped,
     )
 
 

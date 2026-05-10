@@ -149,7 +149,7 @@ public:
 
   // size known at compile-time
   // simple generate
-  virtual std::vector<std::string> generate(std::shared_ptr<AccessAction> action, const std::string &access_var_name, size_t size, size_t array_size = 0, const std::string &index_var = "", bool needs_strided = false, const std::string &offset = "0") const = 0;
+  virtual std::vector<std::string> generate(std::shared_ptr<AccessAction> action, const std::string &access_var_name, size_t size, size_t array_size = 0, const std::string &index_var = "", bool needs_strided = false, const std::string &offset = "0", const std::string &custom_type = "") const = 0;
 
 
   // simple split, all variants
@@ -157,7 +157,7 @@ public:
   // simple split, using auxiliary size and content variables
   virtual SplitAccess generate_split_aux_vars(std::shared_ptr<AccessAction> action, const std::string &access_var_name, size_t size, size_t array_size = 0, const std::string &index_var = "", std::function<std::vector<std::string>(const std::string&)> generate_counter_update=nullptr, const std::string &distance = "", bool needs_strided = false, const std::string &offset = "0") const = 0;
   // simple split, using const size and content variables
-  virtual SplitAccess generate_split_const_vars(std::shared_ptr<AccessAction> action, const std::string &access_var_name, size_t size, size_t array_size = 0, const std::string &index_var = "", bool needs_strided = false, const std::string &offset = "0") const = 0;
+  virtual SplitAccess generate_split_const_vars(std::shared_ptr<AccessAction> action, const std::string &access_var_name, size_t size, size_t array_size = 0, const std::string &index_var = "", bool needs_strided = false, const std::string &offset = "0", const std::string &custom_type = "") const = 0;
 
   // generate from the given index to index + size
   virtual std::vector<std::string> generate_at_index(
@@ -205,8 +205,8 @@ public:
     const std::string &offset = "0"
     ) const = 0;
 
-  // generate in bulks using an auxiliary pointer
-  virtual SplitAccess generate_bulk_split_using_aux_ptr(
+  // generate in bulks using an auxiliary pointer 
+  virtual SplitAccess generate_bulk_split_using_aux_ptr( //never-used
     std::shared_ptr<AccessAction> action,
     std::string from,
     std::string to,
@@ -242,13 +242,23 @@ public:
     const std::string &offset = "0"
   ) const = 0;
 
-  // Generate access code using !llvm.ptr instead of memref.
-  // The generated code operates on a variable of type !llvm.ptr.
-  // Callers must ensure required external functions (e.g., @memset, @memcpy)
-  // are declared in the global scope when using StdlibLocation.
-  virtual std::vector<std::string> generate_llvm_ptr(
+  // Generate access via memref.view to a dynamically-sized big type (e.g. memref<?xi32>).
+  virtual std::vector<std::string> generate_big_type(
     std::shared_ptr<AccessAction> action,
-    const std::string &llvm_ptr_var_name,
-    size_t size
+    const std::string &orig_var_name,
+    const std::string &orig_type,
+    const std::string &view_offset,
+    const std::string &view_sizes,
+    const std::string &distance
   ) const = 0;
+
+  // Generate access via memref.view for load widening (e.g. memref<2xi32>) with an offset.
+  virtual std::vector<std::string> generate_load_widening(
+    std::shared_ptr<AccessAction> action,
+    const std::string &orig_var_name,
+    const std::string &orig_type,
+    const std::string &view_offset,
+    const std::string &access_index
+  ) const = 0;
+
 };

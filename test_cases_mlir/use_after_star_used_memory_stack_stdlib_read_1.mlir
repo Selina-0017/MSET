@@ -15,42 +15,40 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
-  memref.global @target_address : memref<1xindex>
-  memref.global @target_ptr : memref<1xmemref<8xi8>>
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @last_address : memref<1xindex>
+  memref.global @target_addr : memref<8xi8> = dense<170>
+  memref.global @last_address : memref<8xi8> = dense<0>
 
   func.func @other_f() -> i32 {
-  %precond_fail = arith.constant 43 : i32
   %test_success = arith.constant 42 : i32
+  %precond_fail = arith.constant 43 : i32
+  %ctrue = arith.constant 1 : i1
   %c0 = arith.constant 0 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
     %reallocated = memref.alloca() : memref<8xi8>
-  %realloc_addr = memref.extract_aligned_pointer_as_index %reallocated : memref<8xi8> -> index
-  %global_last = memref.get_global @last_address : memref<1xindex>
-  %last_addr = memref.load %global_last[%c0] : memref<1xindex>
-  %eq_last = arith.cmpi eq, %last_addr, %realloc_addr : index
-  scf.if %eq_last {
+  %target_addr = memref.get_global @target_addr : memref<8xi8>
+  %target_ptr = memref.extract_aligned_pointer_as_index %target_addr : memref<8xi8> -> index
+  %realloc_ptr = memref.extract_aligned_pointer_as_index %reallocated : memref<8xi8> -> index
+  %last_address = memref.get_global @last_address : memref<8xi8>
+  %last_ptr = memref.extract_aligned_pointer_as_index %last_address : memref<8xi8> -> index
+  %eq = arith.cmpi eq, %target_ptr, %realloc_ptr : index
+  %eq_1= arith.cmpi eq, %target_ptr, %last_ptr : index
+  %neq = arith.xori %eq, %ctrue : i1
+  %neq_1 = arith.xori %eq_1, %ctrue : i1
+  scf.if %neq_1 {
     func.call @exit(%precond_fail) : (i32) -> ()
-    scf.yield
   }
-  memref.store %realloc_addr, %global_last[%c0] : memref<1xindex>
-  %global_addr_other = memref.get_global @target_address : memref<1xindex>
-  %target_addr_loaded = memref.load %global_addr_other[%c0] : memref<1xindex>
-  %eq = arith.cmpi eq, %target_addr_loaded, %realloc_addr : index
-  scf.if %eq {
-    %global_ptr_access = memref.get_global @target_ptr : memref<1xmemref<8xi8>>
-    %saved_ptr = memref.load %global_ptr_access[%c0] : memref<1xmemref<8xi8>>
-  %read_value_35 = memref.alloca() : memref<8xi8>
-  memref.copy %saved_ptr, %read_value_35 : memref<8xi8> to memref<8xi8>
-  %use_val_read_value_35 = memref.load %read_value_35[%c0] : memref<8xi8>
-  func.call @use(%use_val_read_value_35) : (i8) -> ()
-    func.call @exit(%test_success) : (i32) -> ()
-    scf.yield
+  %val_realloc = memref.load %reallocated[%c0] : memref<8xi8>
+  memref.store %val_realloc, %last_address[%c0] : memref<8xi8>
+  scf.if %neq {
+    func.call @exit(%precond_fail) : (i32) -> ()
   }
+  %read_value_34 = memref.alloca() : memref<8xi8>
+  memref.copy %target_addr, %read_value_34 : memref<8xi8> to memref<8xi8>
+  %use_val_read_value_34 = memref.load %read_value_34[%c0] : memref<8xi8>
+  func.call @use(%use_val_read_value_34) : (i8) -> ()
+  func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32
   }
@@ -59,8 +57,10 @@ module {
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
+  %test_success = arith.constant 42 : i32
+  %c0_v = arith.constant 0 : index
+  %c8_v = arith.constant 8 : index
     %precond_fail = arith.constant 43 : i32
-    %test_success = arith.constant 42 : i32
     %c0_i32 = arith.constant 0 : i32
     // locals
 
@@ -68,11 +68,7 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %target[%i] : memref<8xi8>
     }
-  %target_addr = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-  %global_addr = memref.get_global @target_address : memref<1xindex>
-  memref.store %target_addr, %global_addr[%c0] : memref<1xindex>
-  %global_ptr = memref.get_global @target_ptr : memref<1xmemref<8xi8>>
-  memref.store %target, %global_ptr[%c0] : memref<1xmemref<8xi8>>
+  %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
 
 
     return %c0_i32 : i32
@@ -80,21 +76,26 @@ module {
 
   func.func @main() -> i32 {
     %c0_i32 = arith.constant 0 : i32
-    %c0_main = arith.constant 0 : index
-    %c1_main = arith.constant 1 : index
-    %cMAX_main = arith.constant 1000000000 : index
-    %precond_fail = arith.constant 43 : i32
+  %precond_fail = arith.constant 43 : i32
+  %c0_loop = arith.constant 0 : index
+  %c1_loop = arith.constant 1 : index
+  %c_max_loop = arith.constant 1000000000 : index
+  %ctrue_loop = arith.constant 1 : i1
+    %cfalse = arith.constant 0 : i1
     %ret = func.call @f() : () -> i32
-    %results = scf.while (%counter = %c0_main) : (index) -> index {
-      %lt = arith.cmpi slt, %counter, %cMAX_main : index
-      scf.condition(%lt) %counter : index
-    } do {
-    ^bb0(%counter_iter : index):
+  %counter_while, %not_matched_while = scf.while (%counter_iter = %c0_loop, %not_matched_iter = %ctrue_loop) : (index, i1) -> (index, i1) {
+    %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index
+    %cond_while = arith.andi %continue_while, %not_matched_iter : i1
+    scf.condition(%cond_while) %counter_iter, %not_matched_iter : index, i1
+  } do {
+  ^bb0(%counter_loop : index, %not_matched_loop : i1):
     %_ = func.call @other_f() : () -> i32
-      %next_counter = arith.addi %counter_iter, %c1_main : index
-      scf.yield %next_counter : index
-    }
+    %next_counter = arith.addi %counter_loop, %c1_loop : index
+    scf.yield %next_counter, %cfalse : index, i1
+  }
+  scf.if %not_matched_while {
     func.call @exit(%precond_fail) : (i32) -> ()
+  }
 
     return %c0_i32 : i32
   }

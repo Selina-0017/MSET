@@ -47,13 +47,10 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate(
     return 42;
   */
   CodeCanvas variant;
-  variant.add_global("func.func private @exit(%arg0: i32) -> ()");
   variant.add_test_case_description_line("Origin: " + origin->get_name());
   variant.add_test_case_description_line("Target: " + target->get_name());
   variant.add_test_case_description_line("Bug type: " + origin_target_relation->get_printable_name() + ", type confusion OOBA, " + flow->get_name());
   variant.add_test_case_description_line("Access type: " + access_location->get_name() + ", " + access_action->get_name());
-
-
 
   auto generate_preconditions_check_distance = std::bind(&Flow::generate_preconditions_check_distance, flow.get(), std::placeholders::_1);
   auto generate_preconditions_check_in_range = std::bind(&Flow::generate_preconditions_check_in_range, flow.get(), std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
@@ -69,106 +66,41 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate(
     if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
     if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
 
-    // manual i32 assembly variant (replaces reinterpret_cast)
-    std::shared_ptr<OriginTargetCodeCanvas> variant_manual_i32 = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
     bool needs_strided = !is_a<NonObject>(origin_target_relation);
-    std::string origin_name = variant_manual_i32->get_origin_name();
-    std::string dist = variant_manual_i32->get_distance();
+    std::string origin_name = origin_target_canvas->get_origin_name();
     std::string origin_offset = "0";
     if ( is_a<IntraObject>(origin_target_relation) && static_dist < 0 )
       origin_offset = std::to_string(std::abs(static_dist));
     std::string origin_type = needs_strided ? "memref<8xi8, strided<[1], offset: " + origin_offset + ">>" : "memref<8xi8>";
 
-    std::vector<std::string> manual_i32_code = {
-      "%c0 = arith.constant 0 : index",
-      "%c1 = arith.constant 1 : index",
-      "%c2 = arith.constant 2 : index",
-      "%c3 = arith.constant 3 : index",
-      "scf.for %i = %c0 to %" + dist + " step %c1 {",
-      "  %val = memref.load %" + origin_name + "[%i] : " + origin_type,
-      "  func.call @use(%val) : (i8) -> ()",
-      "}",
-    };
-
-    if (is_a<ReadAction>(access_action))
-    {
-      std::vector<std::string> read_assembly = {
-        "%c8_i32  = arith.constant 8 : i32",
-        "%c16_i32 = arith.constant 16 : i32",
-        "%c24_i32 = arith.constant 24 : i32",
-        "%b0 = memref.load %" + origin_name + "[%" + dist + "] : " + origin_type,
-        "func.call @use(%b0) : (i8) -> ()",
-        "%idx1 = arith.addi %" + dist + ", %c1 : index",
-        "%b1 = memref.load %" + origin_name + "[%idx1] : " + origin_type,
-        "func.call @use(%b1) : (i8) -> ()",
-        "%idx2 = arith.addi %" + dist + ", %c2 : index",
-        "%b2 = memref.load %" + origin_name + "[%idx2] : " + origin_type,
-        "func.call @use(%b2) : (i8) -> ()",
-        "%idx3 = arith.addi %" + dist + ", %c3 : index",
-        "%b3 = memref.load %" + origin_name + "[%idx3] : " + origin_type,
-        "func.call @use(%b3) : (i8) -> ()",
-        "%b0_i32 = arith.extui %b0 : i8 to i32",
-        "%b1_i32 = arith.extui %b1 : i8 to i32",
-        "%b2_i32 = arith.extui %b2 : i8 to i32",
-        "%b3_i32 = arith.extui %b3 : i8 to i32",
-        "%b1_sh = arith.shli %b1_i32, %c8_i32  : i32",
-        "%b2_sh = arith.shli %b2_i32, %c16_i32 : i32",
-        "%b3_sh = arith.shli %b3_i32, %c24_i32 : i32",
-        "%acc0 = arith.ori %b0_i32, %b1_sh : i32",
-        "%acc1 = arith.ori %b2_sh, %b3_sh : i32",
-        "%assembled = arith.ori %acc0, %acc1 : i32",
-      };
-      manual_i32_code.insert(manual_i32_code.end(), read_assembly.begin(), read_assembly.end());
-    }
-    else
-    {
-      std::vector<std::string> write_deassembly = {
-        "%c8_i32  = arith.constant 8 : i32",
-        "%c16_i32 = arith.constant 16 : i32",
-        "%c24_i32 = arith.constant 24 : i32",
-        "%c0xDEADBEEF = arith.constant 3735928559 : i32",
-        "%b0 = arith.trunci %c0xDEADBEEF : i32 to i8",
-        "%w1_tmp = arith.shrsi %c0xDEADBEEF, %c8_i32  : i32",
-        "%w2_tmp = arith.shrsi %c0xDEADBEEF, %c16_i32 : i32",
-        "%w3_tmp = arith.shrsi %c0xDEADBEEF, %c24_i32 : i32",
-        "%b1 = arith.trunci %w1_tmp : i32 to i8",
-        "%b2 = arith.trunci %w2_tmp : i32 to i8",
-        "%b3 = arith.trunci %w3_tmp : i32 to i8",
-        "memref.store %b0, %" + origin_name + "[%" + dist + "] : " + origin_type,
-        "%idx1 = arith.addi %" + dist + ", %c1 : index",
-        "memref.store %b1, %" + origin_name + "[%idx1] : " + origin_type,
-        "%idx2 = arith.addi %" + dist + ", %c2 : index",
-        "memref.store %b2, %" + origin_name + "[%idx2] : " + origin_type,
-        "%idx3 = arith.addi %" + dist + ", %c3 : index",
-        "memref.store %b3, %" + origin_name + "[%idx3] : " + origin_type,
-      };
-      manual_i32_code.insert(manual_i32_code.end(), write_deassembly.begin(), write_deassembly.end());
-    }
-
-    variant_manual_i32->add_during_lifetime(manual_i32_code);
-    variant_manual_i32->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
-    variant_manual_i32->add_variant_description_line("manual i32 assembly from 4 bytes");
-
-    variant_manual_i32->add_variant_description_line("using a global index");
-    full_variants.push_back(variant_manual_i32);
+    // big type variant
+    std::shared_ptr<OriginTargetCodeCanvas> variant_big_type = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
+    std::vector<std::string> big_type_code = access_location->generate_big_type(
+      access_action,
+      origin_name,
+      origin_type,
+      "c0",   // view offset
+      "c2",   // view sizes (dynamic dim)
+      origin_target_canvas->get_distance()
+    );
+    variant_big_type->add_during_lifetime(big_type_code);
+    variant_big_type->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
+    variant_big_type->add_variant_description_line("using memref.view to big type");
+    full_variants.push_back(variant_big_type);
 
     // load widening variant
     std::shared_ptr<OriginTargetCodeCanvas> variant_with_load_widening = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
-    bool needs_strided_load = !is_a<NonObject>(origin_target_relation);
-    std::vector<std::string> load_widening_code = access_location->generate_uint32(
+    std::vector<std::string> load_widening_code = access_location->generate_load_widening(
       access_action,
       variant_with_load_widening->get_origin_name(),
-      variant_with_load_widening->get_origin_name(),
-      variant_with_load_widening->get_distance(),
-      8,
-      generate_preconditions_check_distance,
-      needs_strided_load,
-      "0"
+      origin_type,
+      "c4",   // view offset: 4 bytes, causing second i32 to be OOB
+      "c1"    // access index: second i32
     );
     variant_with_load_widening->add_during_lifetime(load_widening_code);
     variant_with_load_widening->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
-    variant_with_load_widening->add_variant_description_line("using load widening");
-    full_variants.push_back( variant_with_load_widening );
+    variant_with_load_widening->add_variant_description_line("using memref.view for load widening");
+    full_variants.push_back(variant_with_load_widening);
   }
 
   return full_variants;
@@ -191,7 +123,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate_val
     return 42;
   */
   CodeCanvas variant;
-  variant.add_global("func.func private @exit(%arg0: i32)");
   variant.add_test_case_description_line("Origin: " + origin->get_name());
   variant.add_test_case_description_line("Target: " + target->get_name());
   variant.add_test_case_description_line("Bug type: " + origin_target_relation->get_printable_name() + ", type confusion OOBA, " + flow->get_name());
@@ -208,7 +139,9 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate_val
     if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
     if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
 
-    // simple variant with reinterpret_cast to large memref
+    bool needs_strided = !is_a<NonObject>(origin_target_relation);
+
+    // big type variant
     std::shared_ptr<OriginTargetCodeCanvas> variant_with_big_type = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
 
     std::string var_name_to_access;
@@ -216,7 +149,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate_val
     if ( origin_target_canvas->is_target_allocated() )
     {
       var_name_to_access = variant_with_big_type->get_target_name();
-      ssize_t static_dist = origin_target_canvas->get_distance_static_value();
       if ( static_dist > 0 )
         var_offset = std::to_string(static_dist);
     }
@@ -224,7 +156,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate_val
     {
       var_name_to_access = variant_with_big_type->get_origin_name();
     }
-    bool needs_strided = !is_a<NonObject>(origin_target_relation);
 
     std::vector<std::string> access_target_code = access_location->generate_at_index(
       access_action,
@@ -237,25 +168,28 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate_val
     );
     variant_with_big_type->add_during_lifetime(access_target_code);
     variant_with_big_type->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
-    variant_with_big_type->add_variant_description_line("using reinterpret_cast to large memref");
-    full_variants.push_back( variant_with_big_type );
+    variant_with_big_type->add_variant_description_line("normal access to target");
+    full_variants.push_back(variant_with_big_type);
 
     // load widening variant
     std::shared_ptr<OriginTargetCodeCanvas> variant_with_load_widening = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
-    access_target_code = access_location->generate_uint8(
+    std::string origin_offset = "0";
+    if ( is_a<IntraObject>(origin_target_relation) && static_dist < 0 )
+      origin_offset = std::to_string(std::abs(static_dist));
+
+    access_target_code = access_location->generate_at_index(
       access_action,
       variant_with_load_widening->get_origin_name(),
-      variant_with_load_widening->get_origin_name(),
-      variant_with_load_widening->get_distance(),
+      "c0",
       8,
       nullptr,
       needs_strided,
-      "0"
+      origin_offset
     );
     variant_with_load_widening->add_during_lifetime(access_target_code);
     variant_with_load_widening->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
-    variant_with_load_widening->add_variant_description_line("using load widening");
-    full_variants.push_back( variant_with_load_widening );
+    variant_with_load_widening->add_variant_description_line("normal access to target via offset");
+    full_variants.push_back(variant_with_load_widening);
   }
 
   return full_variants;

@@ -11,52 +11,36 @@
 // Access type: direct, write
 // Variant:
 //  - target declared after origin
-//  - using load widening
+//  - using memref.view for load widening
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<315xi8> = dense<170>
+  memref.global @parent : memref<32xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 307 : index
+    %distance = arith.constant 24 : index
     %c1 = arith.constant 1 : index
     %c2 = arith.constant 2 : index
-    %c3 = arith.constant 3 : index
-    %c8_i32 = arith.constant 8 : i32
-    %c16_i32 = arith.constant 16 : i32
-    %c24_i32 = arith.constant 24 : i32
+    %c4 = arith.constant 4 : index
     %c0xFFFFFFFF = arith.constant 4294967295 : i32
-    %base = arith.constant 7 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.get_global @parent : memref<315xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<315xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[307][8][1] : memref<315xi8> to memref<8xi8, strided<[1], offset: 307>>
+    %parent = memref.get_global @parent : memref<32xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<32xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[24][8][1] : memref<32xi8> to memref<8xi8, strided<[1], offset: 24>>
     %distance_negated = arith.subi %c0, %distance : index
-    %b0 = arith.trunci %c0xFFFFFFFF : i32 to i8
-    %w1_tmp = arith.shrsi %c0xFFFFFFFF, %c8_i32  : i32
-    %w2_tmp = arith.shrsi %c0xFFFFFFFF, %c16_i32 : i32
-    %w3_tmp = arith.shrsi %c0xFFFFFFFF, %c24_i32 : i32
-    %b1 = arith.trunci %w1_tmp : i32 to i8
-    %b2 = arith.trunci %w2_tmp : i32 to i8
-    %b3 = arith.trunci %w3_tmp : i32 to i8
-    memref.store %b0, %parent_origin[%base] : memref<8xi8, strided<[1], offset: 0>>
-    %idx1 = arith.addi %base, %c1 : index
-    memref.store %b1, %parent_origin[%idx1] : memref<8xi8, strided<[1], offset: 0>>
-    %idx2 = arith.addi %base, %c2 : index
-    memref.store %b2, %parent_origin[%idx2] : memref<8xi8, strided<[1], offset: 0>>
-    %idx3 = arith.addi %base, %c3 : index
-    memref.store %b3, %parent_origin[%idx3] : memref<8xi8, strided<[1], offset: 0>>
+    %viewed = memref.view %parent_origin[%c4][] : memref<8xi8, strided<[1], offset: 0>> to memref<2xi32>
+    scf.for %i = %c0 to %c2 step %c1 {
+      memref.store %c0xFFFFFFFF, %viewed[%i] : memref<2xi32>
+    }
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

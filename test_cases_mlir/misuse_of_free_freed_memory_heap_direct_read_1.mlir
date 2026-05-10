@@ -15,51 +15,47 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
-  llvm.func @free(!llvm.ptr) -> ()
+  func.func @fake_free(%arg0: i8) -> () {func.return}
+  memref.global @heap_obj : memref<8xi8> = uninitialized
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-  %c8_mof = arith.constant 8 : index
-  %c104_mof = arith.constant 104 : index
-  %c_magic = arith.constant 64 : i8
-  %c0x40 = arith.constant 64 : i8
-  %c16_free = arith.constant 16 : index
-  %c16_cmp = arith.constant 16 : index
-  %c0 = arith.constant 0 : index
-  %c1 = arith.constant 1 : index
-  %c8 = arith.constant 8 : index
+    %c8_mof = arith.constant 8 : index
+    %c0 = arith.constant 0 : index
+    %c104_mof = arith.constant 104 : index
+    %c_magic = arith.constant 64 : i8
+    %c0x40 = arith.constant 64 : i8
+    %ctrue = arith.constant 1 : i1
+    %c1 = arith.constant 1 : index
+    %c8 = arith.constant 8 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
     %target = memref.alloc() : memref<160xi8>
     
-  memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value
-  memref.store %c0x40, %target[%c104_mof] : memref<160xi8>
-  %crafted = memref.subview %target[16][8][1] : memref<160xi8> to memref<8xi8, strided<[1], offset: 16>>
-  %_ = memref.alloc() : memref<8xi8>
-  %target_ptr_free = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index
-  %crafted_addr_free = arith.addi %target_ptr_free, %c16_free : index
-  %crafted_i64_free = arith.index_cast %crafted_addr_free : index to i64
-  %crafted_llvm_free = llvm.inttoptr %crafted_i64_free : i64 to !llvm.ptr
-  llvm.call @free(%crafted_llvm_free) : (!llvm.ptr) -> ()
+    memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value
+    memref.store %c0x40, %target[%c104_mof] : memref<160xi8>
+    %crafted = memref.view %target[%c104_mof][%c8_mof] : memref<160xi8> to memref<?xi8>
+    %_ = memref.alloc() : memref<8xi8>
+    %craft_val = memref.load %crafted[%c0] : memref<?xi8>
+    func.call @fake_free(%craft_val) : (i8) -> ()
   
-  %heap_obj = memref.alloc() : memref<8xi8>
+    %heap_obj = memref.get_global @heap_obj : memref<8xi8>
 
-  %target_addr_cmp = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index
-  %crafted_addr_cmp = arith.addi %target_addr_cmp, %c16_cmp : index
-  %eq_cmp = arith.cmpi eq, %target_addr_cmp, %crafted_addr_cmp : index
-  scf.if %eq_cmp {
+    %target_ptr = memref.extract_aligned_pointer_as_index %target : memref<160xi8> -> index
+    %crafted_ptr = memref.extract_aligned_pointer_as_index %crafted : memref<?xi8> -> index
+    %eq = arith.cmpi eq, %target_ptr, %crafted_ptr : index
+    %neq = arith.xori %eq, %ctrue : i1
+    scf.if %neq {
     memref.dealloc %target : memref<160xi8>
   }
-  scf.for %i = %c0 to %c8 step %c1 {
-    %val = memref.load %heap_obj[%i] : memref<8xi8>
-    func.call @use(%val) : (i8) -> ()
-  }
+    scf.for %i = %c0 to %c8 step %c1 {
+      %val = memref.load %heap_obj[%i] : memref<8xi8>
+      func.call @use(%val) : (i8) -> ()
+    }
   func.call @exit(%test_success) : (i32) -> ()
     return %c0_i32 : i32
   }

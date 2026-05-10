@@ -62,8 +62,7 @@ CodeCanvas::CodeCanvas():
   add_to_f_body("%precond_fail = arith.constant 43 : i32");
   add_to_f_body("%test_success = arith.constant 42 : i32");
   add_global("func.func @use(%arg0: i8) -> () { func.return }");
-  add_global("  func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr");
-  add_global("  func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr");
+  add_global("func.func private @exit(%arg0: i32) -> ()");
 }
 
 CodeCanvas::code_pos_t CodeCanvas::add_type(const std::vector<std::string> &lines)

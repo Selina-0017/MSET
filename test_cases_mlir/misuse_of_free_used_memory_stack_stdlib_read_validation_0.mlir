@@ -15,33 +15,27 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
+  memref.global @heap_obj : memref<8xi8> = uninitialized
 
   func.func @f() -> i32 {
-  %c8_mof = arith.constant 8 : index
-  %c104_mof = arith.constant 104 : index
-  %c_magic = arith.constant 32 : i8
-  %c0x40 = arith.constant 64 : i8
-  %c0 = arith.constant 0 : index
+    %c8_mof = arith.constant 8 : index
+    %c0 = arith.constant 0 : index
+    %c104_mof = arith.constant 104 : index
+    %c_magic = arith.constant 32 : i8
+    %c0x40 = arith.constant 64 : i8
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0_i32 = arith.constant 0 : i32
     // locals
 
     %target = memref.alloca() : memref<160xi8>
-  memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value
-  memref.store %c0x40, %target[%c104_mof] : memref<160xi8>
-  %crafted = memref.subview %target[16][8][1] : memref<160xi8> to memref<8xi8, strided<[1], offset: 16>>
-  %_ = memref.alloc() : memref<8xi8>
+    memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value
+    memref.store %c0x40, %target[%c104_mof] : memref<160xi8>
+    %crafted = memref.view %target[%c104_mof][%c8_mof] : memref<160xi8> to memref<?xi8>
+    %_ = memref.alloc() : memref<8xi8>
   
-  %heap_obj = memref.alloc() : memref<8xi8>
-  %read_value_7 = memref.alloca() : memref<8xi8>
-  memref.copy %heap_obj, %read_value_7 : memref<8xi8> to memref<8xi8>
-  %use_val_read_value_7 = memref.load %read_value_7[%c0] : memref<8xi8>
-  func.call @use(%use_val_read_value_7) : (i8) -> ()
-  func.call @exit(%test_success) : (i32) -> ()
+    %heap_obj = memref.get_global @heap_obj : memref<8xi8>
 
 
     return %c0_i32 : i32
@@ -49,7 +43,15 @@ module {
 
   func.func @main() -> i32 {
     %c0_i32 = arith.constant 0 : i32
+  %test_success = arith.constant 42 : i32
+  %c0 = arith.constant 0 : index
     %ret = func.call @f() : () -> i32
+  %heap_obj = memref.get_global @heap_obj : memref<8xi8>
+  %read_value_7 = memref.alloca() : memref<8xi8>
+  memref.copy %heap_obj, %read_value_7 : memref<8xi8> to memref<8xi8>
+  %use_val_read_value_7 = memref.load %read_value_7[%c0] : memref<8xi8>
+  func.call @use(%use_val_read_value_7) : (i8) -> ()
+  func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32
   }

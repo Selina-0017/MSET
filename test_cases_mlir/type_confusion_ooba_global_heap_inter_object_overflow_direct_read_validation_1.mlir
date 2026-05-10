@@ -11,33 +11,35 @@
 // Access type: direct, read
 // Variant:
 //  - target declared after origin
-//  - using load widening
+//  - normal access to target via offset
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
-  func.func private @exit(%arg0: i32)
-  memref.global @parent : memref<277xi8> = dense<170>
+  func.func private @exit(%arg0: i32) -> ()
+  memref.global @parent : memref<548xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 269 : index
-    %idx = arith.constant 7 : index
+    %distance = arith.constant 540 : index
+    %c1 = arith.constant 1 : index
+    %c8 = arith.constant 8 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.get_global @parent : memref<277xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<277xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[269][8][1] : memref<277xi8> to memref<8xi8, strided<[1], offset: 269>>
+    %parent = memref.get_global @parent : memref<548xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<548xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[540][8][1] : memref<548xi8> to memref<8xi8, strided<[1], offset: 540>>
     %distance_negated = arith.subi %c0, %distance : index
-    %val = memref.load %parent_origin[%idx] : memref<8xi8, strided<[1], offset: 0>>
-    func.call @use(%val) : (i8) -> ()
+    scf.for %j = %c0 to %c8 step %c1 {
+      %idx = arith.addi %j, %c0 : index
+      %val = memref.load %parent_origin[%idx] : memref<8xi8, strided<[1], offset: 0>>
+      func.call @use(%val) : (i8) -> ()
+    }
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

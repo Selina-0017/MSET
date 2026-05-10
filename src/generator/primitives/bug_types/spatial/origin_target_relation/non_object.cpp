@@ -44,6 +44,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > NonObject::generate(
   origin_canvas->add_to_f_body(
     "%distance_negated = arith.subi %c0, %distance : index"
   );
+  origin_canvas->set_lifetime_pos(origin_canvas->get_current_pos_in_f());
 
   auto variant = std::make_shared<OriginTargetCodeCanvas>(
     origin_canvas, origin_size, origin_size, "origin", "origin",
@@ -58,6 +59,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > NonObject::generate(
   origin_canvas->add_to_f_body(
     "%underflow_dist = arith.constant " + std::to_string(distance_down) + " : index"
   );
+  origin_canvas->set_lifetime_pos(origin_canvas->get_current_pos_in_f());
 
   variant = std::make_shared<OriginTargetCodeCanvas>(
     origin_canvas, origin_size, origin_size, "origin", "origin",

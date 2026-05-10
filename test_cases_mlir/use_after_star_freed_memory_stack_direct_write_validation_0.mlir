@@ -14,10 +14,6 @@ module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
-  memref.global @target_address : memref<1xindex>
-  memref.global @target_ptr : memref<1xmemref<8xi8>>
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
@@ -27,6 +23,8 @@ module {
     %c0xAA = arith.constant 170 : i8
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
+    %c0_v = arith.constant 0 : index
+    %c8_v = arith.constant 8 : index
     %c0xFF = arith.constant 255 : i8
     %c0_i32 = arith.constant 0 : i32
     // locals
@@ -36,15 +34,9 @@ module {
       memref.store %c0xAA, %target[%i] : memref<8xi8>
     }
 
-    %target_addr = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-    %global_addr = memref.get_global @target_address : memref<1xindex>
-    memref.store %target_addr, %global_addr[%c0] : memref<1xindex>
-    %global_ptr = memref.get_global @target_ptr : memref<1xmemref<8xi8>>
-    memref.store %target, %global_ptr[%c0] : memref<1xmemref<8xi8>>
-    %global_ptr_main = memref.get_global @target_ptr : memref<1xmemref<8xi8>>
-    %saved_ptr = memref.load %global_ptr_main[%c0] : memref<1xmemref<8xi8>>
+    %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xFF, %saved_ptr[%i] : memref<8xi8>
+      memref.store %c0xFF, %view_target[%i] : memref<?xi8>
     }
     func.call @exit(%test_success) : (i32) -> ()
 

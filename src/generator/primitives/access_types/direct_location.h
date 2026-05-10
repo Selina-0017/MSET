@@ -26,7 +26,8 @@ public:
     size_t array_size = 0,
     const std::string &index_var = "",
     bool needs_strided = false,
-    const std::string &offset = "0"
+    const std::string &offset = "0",
+    const std::string &custom_type = ""
   ) const override;
 
   // simple split, using const size and content variables
@@ -50,7 +51,8 @@ public:
     size_t array_size = 0,
     const std::string &index_var = "",
     bool needs_strided = false,
-    const std::string &offset = "0"
+    const std::string &offset = "0",
+    const std::string &custom_type = ""
   ) const override;
 
   // generate from the given index to index + size
@@ -124,9 +126,20 @@ public:
     const std::string &offset = "0"
   ) const override;
 
-  std::vector<std::string> generate_llvm_ptr(
+  std::vector<std::string> generate_big_type(
     std::shared_ptr<AccessAction> action,
-    const std::string &llvm_ptr_var_name,
-    size_t size
+    const std::string &orig_var_name,
+    const std::string &orig_type,
+    const std::string &view_offset,
+    const std::string &view_sizes,
+    const std::string &distance
+  ) const override;
+
+  std::vector<std::string> generate_load_widening(
+    std::shared_ptr<AccessAction> action,
+    const std::string &orig_var_name,
+    const std::string &orig_type,
+    const std::string &view_offset,
+    const std::string &access_index
   ) const override;
 };

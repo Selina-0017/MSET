@@ -11,16 +11,14 @@
 // Access type: direct, write
 // Variant:
 //  - target declared before origin
-//  - distance is checked as is
-//  - target reached by using a auxiliary pointer
-//  - target accessed by using constants
+//  - distance is negated before checking
+//  - target reached by using a index
+//  - target accessed by using auxiliary variables
 
 module {
   // globals
 
   func.func @use(%arg0: i8) -> () { func.return }
-    func.func private @memset(!llvm.ptr, i32, i64) -> !llvm.ptr
-    func.func private @memcpy(!llvm.ptr, !llvm.ptr, i64) -> !llvm.ptr
   func.func private @exit(%arg0: i32) -> ()
   memref.global @s : memref<16xi8> = dense<170>
 
@@ -44,9 +42,15 @@ module {
     func.call @use(%use_val_s_target) : (i8) -> ()
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 8>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
-    scf.for %reach_index = %c0 to %distance step %c1 {
-      %index = arith.subi %c0, %reach_index : index
-      memref.store %c0xFF, %s_origin[%index] : memref<8xi8, strided<[1], offset: 8>>
+    %negadist_variant = arith.subi %c0, %distance_negated : index
+    %final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {
+      %cond = arith.cmpi slt, %reach_index, %negadist_variant : index
+      scf.condition(%cond) %reach_index : index
+    } do {
+    ^bb0(%reach_index: index):
+      memref.store %c0xFF, %s_origin[%reach_index] : memref<8xi8, strided<[1], offset: 8>>
+      %next_reach_index = arith.subi %reach_index, %c1 : index
+      scf.yield %next_reach_index : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xFF, %s_origin[%i] : memref<8xi8, strided<[1], offset: 8>>
