@@ -43,19 +43,13 @@ module {
     func.call @use(%use_val_origin) : (i8) -> ()
     %read_value_76 = memref.alloca() : memref<1024xi8>
     
-    %final_i = scf.while (%i = %c0) : (index) -> index {
-      %cond = arith.cmpi slt, %i, %distance : index
-      scf.condition(%cond) %i : index
-    } do {
-    ^bb0(%i: index):
+    scf.for %i = %c0 to %distance step %c1024 {
       %remaining = arith.subi %distance, %i : index
       %is_full = arith.cmpi sgt, %remaining, %c1024 : index
       %step = arith.select %is_full, %c1024, %remaining : index
       %src_slice = memref.subview %origin[%i][%step][1] : memref<8xi8> to memref<?xi8, strided<[1], offset: ?>>
       %dst_slice = memref.subview %read_value_76[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
       memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>
-      %next_i = arith.addi %i, %c1024 : index
-      scf.yield %next_i : index
     }
     %use_val_read_value_76 = memref.load %read_value_76[%c0] : memref<1024xi8>
     func.call @use(%use_val_read_value_76) : (i8) -> ()

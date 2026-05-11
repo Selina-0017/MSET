@@ -194,7 +194,6 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_index(
     dist = "negadist_variant";
     negadist_val = "%" + dist + " = arith.subi %c0, %" + distance + " : index";
   }
-  std::vector<std::string> counter_update = generate_counter_update("reach_index");
 
   if (is_a<ReadAction>(action))
   {
@@ -206,22 +205,15 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_index(
       {"c1024", "index", "", "1024"},
       {rv, "memref<1024xi8>", "", "memref.alloca() : memref<1024xi8>"},
     };
-
     split_access.access_lines = {
       negadist_val,
-      "%final_i = scf.while (%i = %c0) : (index) -> index {",
-      "  %cond = arith.cmpi slt, %i, %" + dist + " : index",
-      "  scf.condition(%cond) %i : index",
-      "} do {",
-      "^bb0(%i: index):",
+      "scf.for %i = %c0 to %" + dist + " step %c1024 {",
       "  %remaining = arith.subi %" + dist + ", %i : index",
       "  %is_full = arith.cmpi sgt, %remaining, %c1024 : index",
       "  %step = arith.select %is_full, %c1024, %remaining : index",
       "  %src_slice = memref.subview %" + from + "[%i][%step][1] : memref<8xi8" + (needs_strided ? ", strided<[1], offset: " + offset + ">>" : ">") + " to memref<?xi8, strided<[1], offset: ?>>",
       "  %dst_slice = memref.subview %" + rv + "[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>",
       "  memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>",
-      "  %next_i = arith.addi %i, %c1024 : index",
-      "  scf.yield %next_i : index",
       "}",
     };
     split_access.access_lines.emplace_back("%use_val_" + rv + " = memref.load %" + rv + "[%c0] : memref<1024xi8>");
@@ -239,14 +231,8 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_index(
     };
     split_access.access_lines = {
       negadist_val,
-      "%final_i = scf.while (%i = %c0) : (index) -> index {",
-      "  %cond = arith.cmpi slt, %i, %" + dist + " : index",
-      "  scf.condition(%cond) %i : index",
-      "} do {",
-      "^bb0(%i: index):",
+      "scf.for %i = %c0 to %" + dist + " step %c1 {",
       "  memref.store %c0xFF, %" + from + "[%i] : memref<8xi8" + type_suffix,
-      "  %next_i = arith.addi %i, %c1 : index",
-      "  scf.yield %next_i : index",
       "}",
     };
     split_access.result = from;
@@ -254,7 +240,6 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_index(
   split_access.description = "index";
   return split_access;
 }
-
 AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_aux_ptr(
   std::shared_ptr<AccessAction> action,
   std::string from,

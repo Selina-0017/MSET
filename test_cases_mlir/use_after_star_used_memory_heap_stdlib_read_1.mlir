@@ -38,26 +38,26 @@ module {
     memref.dealloc %target : memref<8xi8>
     %reallocated = memref.alloc() : memref<8xi8>
 
-  %reallocated_while, %counter_while, %not_matched_while = scf.while (%reallocated_iter = %reallocated, %counter_iter = %c0_loop, %not_matched_iter = %ctrue_loop)
-      : (memref<8xi8>, index, i1) -> (memref<8xi8>, index, i1) {
-    %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index
-    %cond_while = arith.andi %continue_while, %not_matched_iter : i1
-    scf.condition(%cond_while) %reallocated_iter, %counter_iter, %not_matched_iter : memref<8xi8>, index, i1
-  } do {
-  ^bb0(%reallocated_loop : memref<8xi8>, %counter_loop : index, %not_matched_loop : i1):
-    memref.dealloc %reallocated_loop : memref<8xi8>
+  %reallocated_for, %not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop
+      iter_args(%reallocated_iter = %reallocated, %not_matched_iter = %ctrue_loop)
+      -> (memref<8xi8>, i1) {
+    %next_reallocated, %next_not_matched = scf.if %not_matched_iter -> (memref<8xi8>, i1) {
+      memref.dealloc %reallocated_iter : memref<8xi8>
       %new_reallocated = memref.alloc() : memref<8xi8>
       scf.for %i = %c0 to %c8 step %c1 {
         memref.store %c0xAA, %new_reallocated[%i] : memref<8xi8>
       }
-    %target_ptr_loop = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-    %new_ptr_loop = memref.extract_aligned_pointer_as_index %new_reallocated : memref<8xi8> -> index
-    %eq_loop = arith.cmpi eq, %target_ptr_loop, %new_ptr_loop : index
-    %not_matched_next = arith.xori %eq_loop, %ctrue_loop : i1
-    %next_counter_loop = arith.addi %counter_loop, %c1_loop : index
-    scf.yield %new_reallocated, %next_counter_loop, %not_matched_next : memref<8xi8>, index, i1
+      %target_ptr_loop = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
+      %new_ptr_loop = memref.extract_aligned_pointer_as_index %new_reallocated : memref<8xi8> -> index
+      %eq_loop = arith.cmpi eq, %target_ptr_loop, %new_ptr_loop : index
+      %not_matched_next = arith.xori %eq_loop, %ctrue_loop : i1
+      scf.yield %new_reallocated, %not_matched_next : memref<8xi8>, i1
+    } else {
+      scf.yield %reallocated_iter, %not_matched_iter : memref<8xi8>, i1
+    }
+    scf.yield %next_reallocated, %next_not_matched : memref<8xi8>, i1
   }
-  scf.if %not_matched_while {
+  scf.if %not_matched_for {
     func.call @exit(%precond_fail) : (i32) -> ()
   }
   %read_value_40 = memref.alloca() : memref<8xi8>

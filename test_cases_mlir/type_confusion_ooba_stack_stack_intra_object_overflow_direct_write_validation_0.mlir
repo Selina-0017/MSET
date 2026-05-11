@@ -11,7 +11,7 @@
 // Access type: direct, write
 // Variant:
 //  - target declared after origin
-//  - normal access to target
+//  - using reinterpret_cast to large memref
 
 module {
   // globals

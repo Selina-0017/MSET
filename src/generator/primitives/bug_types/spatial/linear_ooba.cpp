@@ -122,7 +122,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
           bool needs_strided = !is_a<NonObject>(origin_target_relation);
           std::vector<AccessLocation::SplitAccess> access_target_codes = access_location->generate_split_all(
             access_action,
-            origin_target_canvas_copy->get_origin_name(),
+            origin_target_canvas_copy->get_target_name(),
             origin_target_canvas_copy->get_target_size(),generate_counter_update,distance, needs_strided, target_offset);
           for ( auto &access_target_code : access_target_codes )
           {

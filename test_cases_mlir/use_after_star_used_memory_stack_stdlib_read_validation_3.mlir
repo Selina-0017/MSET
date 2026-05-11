@@ -66,16 +66,17 @@ module {
   %c1_loop = arith.constant 1 : index
   %c_max_loop = arith.constant 100 : index
   %ctrue_loop = arith.constant 1 : i1
-    %cfalse = arith.constant 0 : i1
-  %counter_while, %not_matched_while = scf.while (%counter_iter = %c0_loop, %not_matched_iter = %ctrue_loop) : (index, i1) -> (index, i1) {
-    %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index
-    %cond_while = arith.andi %continue_while, %not_matched_iter : i1
-    scf.condition(%cond_while) %counter_iter, %not_matched_iter : index, i1
-  } do {
-  ^bb0(%counter_loop : index, %not_matched_loop : i1):
+      %cfalse = arith.constant 0 : i1
+  %not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop
+      iter_args(%not_matched_iter = %ctrue_loop)
+      -> (i1) {
+    %next_not_matched = scf.if %not_matched_iter -> (i1) {
     %ret = func.call @f() : () -> i32
-    %next_counter = arith.addi %counter_loop, %c1_loop : index
-    scf.yield %next_counter, %cfalse : index, i1
+      scf.yield %cfalse : i1
+    } else {
+      scf.yield %not_matched_iter : i1
+    }
+    scf.yield %next_not_matched : i1
   }
   func.call @exit(%test_success) : (i32) -> ()
 

@@ -37,15 +37,9 @@ module {
     }
     %distance_negated = arith.subi %c0, %distance : index
     
-    %final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {
-      %cond = arith.cmpi slt, %reach_index, %c0 : index
-      scf.condition(%cond) %reach_index : index
-    } do {
-    ^bb0(%reach_index: index):
+    scf.for %reach_index = %c0 to %c0 step %c1 {
       %val = memref.load %origin[%reach_index] : memref<8xi8>
       func.call @use(%val) : (i8) -> ()
-      %next_reach_index = arith.addi %reach_index, %c1 : index
-      scf.yield %next_reach_index : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       %val = memref.load %origin[%i] : memref<8xi8>

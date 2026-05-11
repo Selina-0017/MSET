@@ -11,7 +11,7 @@
 // Access type: direct, write
 // Variant:
 //  - target declared after origin
-//  - normal access to target
+//  - using reinterpret_cast to large memref
 
 module {
   // globals
@@ -27,29 +27,29 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 184 : index
+    %distance = arith.constant 676 : index
     %c0xFF = arith.constant 255 : i8
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.alloc() : memref<192xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<192xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[184][8][1] : memref<192xi8> to memref<8xi8, strided<[1], offset: 184>>
+    %parent = memref.alloc() : memref<684xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<684xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[676][8][1] : memref<684xi8> to memref<8xi8, strided<[1], offset: 676>>
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 184>>
+      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 676>>
     }
     %distance_negated = arith.subi %c0, %distance : index
     scf.for %j = %c0 to %c8 step %c1 {
       %idx = arith.addi %j, %c0 : index
-      memref.store %c0xFF, %parent_target[%idx] : memref<8xi8, strided<[1], offset: 184>>
+      memref.store %c0xFF, %parent_target[%idx] : memref<8xi8, strided<[1], offset: 676>>
     }
     func.call @exit(%test_success) : (i32) -> ()
 
-    memref.dealloc %parent : memref<192xi8>
+    memref.dealloc %parent : memref<684xi8>
     return %c0_i32 : i32
   }
 

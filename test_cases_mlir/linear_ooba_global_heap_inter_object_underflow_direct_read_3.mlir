@@ -20,40 +20,35 @@ module {
 
   func.func @use(%arg0: i8) -> () { func.return }
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<986xi8> = dense<170>
+  memref.global @parent : memref<1013xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 978 : index
+    %distance = arith.constant 1005 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.get_global @parent : memref<986xi8>
-    %parent_target = memref.subview %parent[0][8][1] : memref<986xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_origin = memref.subview %parent[978][8][1] : memref<986xi8> to memref<8xi8, strided<[1], offset: 978>>
+    %parent = memref.get_global @parent : memref<1013xi8>
+    %parent_target = memref.subview %parent[0][8][1] : memref<1013xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_origin = memref.subview %parent[1005][8][1] : memref<1013xi8> to memref<8xi8, strided<[1], offset: 1005>>
     %distance_negated = arith.subi %c0, %distance : index
     %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_parent_target) : (i8) -> ()
-    %use_val_parent_origin = memref.load %parent_origin[%c0] : memref<8xi8, strided<[1], offset: 978>>
+    %use_val_parent_origin = memref.load %parent_origin[%c0] : memref<8xi8, strided<[1], offset: 1005>>
     func.call @use(%use_val_parent_origin) : (i8) -> ()
     %negadist_variant = arith.subi %c0, %distance_negated : index
-    %final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {
-      %cond = arith.cmpi slt, %reach_index, %negadist_variant : index
-      scf.condition(%cond) %reach_index : index
-    } do {
-    ^bb0(%reach_index: index):
-      %val = memref.load %parent_origin[%reach_index] : memref<8xi8, strided<[1], offset: 978>>
+    scf.for %reach_index = %c0 to %negadist_variant step %c1 {
+      %index = arith.subi %c0, %reach_index : index
+      %val = memref.load %parent_origin[%index] : memref<8xi8, strided<[1], offset: 1005>>
       func.call @use(%val) : (i8) -> ()
-      %next_reach_index = arith.subi %reach_index, %c1 : index
-      scf.yield %next_reach_index : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      %val = memref.load %parent_origin[%i] : memref<8xi8, strided<[1], offset: 978>>
+      %val = memref.load %parent_origin[%i] : memref<8xi8, strided<[1], offset: 1005>>
       func.call @use(%val) : (i8) -> ()
     }
     func.call @exit(%test_success) : (i32) -> ()

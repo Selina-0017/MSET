@@ -11,6 +11,8 @@
 #include "generator/primitives/regions/global_region.h"
 #include "generator/primitives/regions/heap_region.h"
 #include "generator/primitives/regions/stack_region.h"
+#include <cstdlib>
+#include <string>
 
 
 bool IntraObject::accepts(std::shared_ptr<Region> origin, std::shared_ptr<Region> target) const
@@ -33,7 +35,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > IntraObject::generate(
   std::vector< std::shared_ptr<OriginTargetCodeCanvas> > variants;
   std::shared_ptr<CodeCanvas> canvas_ptr = std::make_shared<CodeCanvas>(canvas);
 
-  // variant 1: target declared after origin
+  // variant 1: target declared after origin 
   std::shared_ptr<RegionCodeCanvas> region_canvas = origin->generate(
     canvas_ptr, "s", "origin", origin_size, "target", target_size, true
   );
@@ -54,7 +56,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > IntraObject::generate(
   variant->add_variant_description_line("target declared after origin");
   variants.push_back(variant);
 
-  // variant 2: target declared before origin
+  // variant 2: target declared before origin 
   region_canvas = origin->generate(
     canvas_ptr, "s", "target", target_size, "origin", origin_size, true
   );

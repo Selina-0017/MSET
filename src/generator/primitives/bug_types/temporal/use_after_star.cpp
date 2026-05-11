@@ -196,31 +196,32 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
     "%ctrue_loop = arith.constant 1 : i1"
   });
 
-  reused_region_canvas_repeat->add_during_lifetime({ //TODO: 理应返回43，实际返回42
-    "%reallocated_while, %counter_while, %not_matched_while = scf.while (%reallocated_iter = %reallocated, %counter_iter = %c0_loop, %not_matched_iter = %ctrue_loop)",
-    "    : (memref<8xi8>, index, i1) -> (memref<8xi8>, index, i1) {",
-    "  %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index",
-    "  %cond_while = arith.andi %continue_while, %not_matched_iter : i1",
-    "  scf.condition(%cond_while) %reallocated_iter, %counter_iter, %not_matched_iter : memref<8xi8>, index, i1",
-    "} do {",
-    "^bb0(%reallocated_loop : memref<8xi8>, %counter_loop : index, %not_matched_loop : i1):",
-    "  memref.dealloc %reallocated_loop : memref<8xi8>"
+  std::vector<std::string> allocation_for = heap_memory_region->generate_reallocation("new_reallocated", 8, true, "    ");
+  reused_region_canvas_repeat->add_during_lifetime({ //TODO: 这里替换为scf.for的写法
+    "%reallocated_for, %not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
+    "    iter_args(%reallocated_iter = %reallocated, %not_matched_iter = %ctrue_loop)",
+    "    -> (memref<8xi8>, i1) {",
+    "  %next_reallocated, %next_not_matched = scf.if %not_matched_iter -> (memref<8xi8>, i1) {",
+    "    memref.dealloc %reallocated_iter : memref<8xi8>"
   });
 
-  reused_region_canvas_repeat->add_during_lifetime(allocation);
+  reused_region_canvas_repeat->add_during_lifetime(allocation_for);
 
   reused_region_canvas_repeat->add_during_lifetime({
-    "  %target_ptr_loop = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index",
-    "  %new_ptr_loop = memref.extract_aligned_pointer_as_index %new_reallocated : memref<8xi8> -> index",
-    "  %eq_loop = arith.cmpi eq, %target_ptr_loop, %new_ptr_loop : index",
-    "  %not_matched_next = arith.xori %eq_loop, %ctrue_loop : i1",
-    "  %next_counter_loop = arith.addi %counter_loop, %c1_loop : index",
-    "  scf.yield %new_reallocated, %next_counter_loop, %not_matched_next : memref<8xi8>, index, i1",
+    "    %target_ptr_loop = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index",
+    "    %new_ptr_loop = memref.extract_aligned_pointer_as_index %new_reallocated : memref<8xi8> -> index",
+    "    %eq_loop = arith.cmpi eq, %target_ptr_loop, %new_ptr_loop : index",
+    "    %not_matched_next = arith.xori %eq_loop, %ctrue_loop : i1",
+    "    scf.yield %new_reallocated, %not_matched_next : memref<8xi8>, i1",
+    "  } else {",
+    "    scf.yield %reallocated_iter, %not_matched_iter : memref<8xi8>, i1",
+    "  }",
+    "  scf.yield %next_reallocated, %next_not_matched : memref<8xi8>, i1",
     "}"
   });
 
   reused_region_canvas_repeat->add_during_lifetime({
-    "scf.if %not_matched_while {",
+    "scf.if %not_matched_for {",
     "  func.call @exit(%precond_fail) : (i32) -> ()",
     "}"
   });
@@ -312,28 +313,29 @@ std::vector< std::shared_ptr<RegionCodeCanvas>>UseAfterStar::_generate_reused_me
   reused_region_canvas_repeated->add_during_lifetime(access_type_code.to_lines());
   reused_region_canvas_repeated->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
   reused_region_canvas_repeated->add_at(reused_region_canvas_repeated->get_other_f_call_pos(),
-    std::vector<std::string>{
+    std::vector<std::string>{//TODO: 这里替换为scf.for的写法
     "%precond_fail = arith.constant 43 : i32",
       "%c0_loop = arith.constant 0 : index",
       "%c1_loop = arith.constant 1 : index",
       "%c_max_loop = arith.constant " + max_reallocated_retries + " : index",
       "%ctrue_loop = arith.constant 1 : i1",
-      "%counter_while, %not_matched_while = scf.while (%counter_iter = %c0_loop, %not_matched_iter = %ctrue_loop) : (index, i1) -> (index, i1) {",
-      "  %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index",
-      "  %cond_while = arith.andi %continue_while, %not_matched_iter : i1",
-      "  scf.condition(%cond_while) %counter_iter, %not_matched_iter : index, i1",
-      "} do {",
-      "^bb0(%counter_loop : index, %not_matched_loop : i1):"
+      "%not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
+      "    iter_args(%not_matched_iter = %ctrue_loop)",
+      "    -> (i1) {",
+      "  %next_not_matched = scf.if %not_matched_iter -> (i1) {"
     },
     "  "
   );
   reused_region_canvas_repeated->add_at(reused_region_canvas_repeated->get_other_f_call_pos() + 1,
     std::vector<std::string>{
-      "  %cfalse = arith.constant 0 : i1",
-      "  %next_counter = arith.addi %counter_loop, %c1_loop : index",
-      "  scf.yield %next_counter, %cfalse : index, i1",
+      "    %cfalse = arith.constant 0 : i1",
+      "    scf.yield %cfalse : i1",
+      "  } else {",
+      "    scf.yield %not_matched_iter : i1",
+      "  }",
+      "  scf.yield %next_not_matched : i1",
       "}",
-      "scf.if %not_matched_while {",
+      "scf.if %not_matched_for {",
       "  func.call @exit(%precond_fail) : (i32) -> ()",
       "}"
     },
@@ -432,28 +434,29 @@ std::vector< std::shared_ptr<RegionCodeCanvas>>UseAfterStar::_generate_reused_me
   });
   reused_region_canvas_array_repeated->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
   reused_region_canvas_array_repeated->add_at(reused_region_canvas_array_repeated->get_other_f_call_pos(),
-    std::vector<std::string>{
+    std::vector<std::string>{//TODO: 这里替换为scf.for的写法
     "%precond_fail = arith.constant 43 : i32",
       "%c0_loop = arith.constant 0 : index",
       "%c1_loop = arith.constant 1 : index",
       "%c_max_loop = arith.constant " + max_reallocated_retries + " : index",
       "%ctrue_loop = arith.constant 1 : i1",
-      "%counter_while, %not_matched_while = scf.while (%counter_iter = %c0_loop, %not_matched_iter = %ctrue_loop) : (index, i1) -> (index, i1) {",
-      "  %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index",
-      "  %cond_while = arith.andi %continue_while, %not_matched_iter : i1",
-      "  scf.condition(%cond_while) %counter_iter, %not_matched_iter : index, i1",
-      "} do {",
-      "^bb0(%counter_loop : index, %not_matched_loop : i1):"
+      "%not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
+      "    iter_args(%not_matched_iter = %ctrue_loop)",
+      "    -> (i1) {",
+      "  %next_not_matched = scf.if %not_matched_iter -> (i1) {"
     },
     "  "
   );
   reused_region_canvas_array_repeated->add_at(reused_region_canvas_array_repeated->get_other_f_call_pos() + 1,
     std::vector<std::string>{
-      "  %cfalse = arith.constant 0 : i1",
-      "  %next_counter = arith.addi %counter_loop, %c1_loop : index",
-      "  scf.yield %next_counter, %cfalse : index, i1",
+      "    %cfalse = arith.constant 0 : i1",
+      "    scf.yield %cfalse : i1",
+      "  } else {",
+      "    scf.yield %not_matched_iter : i1",
+      "  }",
+      "  scf.yield %next_not_matched : i1",
       "}",
-      "scf.if %not_matched_while {",
+      "scf.if %not_matched_for {",
       "  func.call @exit(%precond_fail) : (i32) -> ()",
       "}"
     },
@@ -615,23 +618,19 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
     "%c_max_loop = arith.constant " + max_reallocated_retries_validation + " : index",
     "%ctrue_loop = arith.constant 1 : i1"
   });
-  reused_region_canvas_repeat->add_during_lifetime({
-    "%reallocated_while, %counter_while = scf.while (%reallocated_iter = %reallocated, %counter_iter = %c0_loop)",
-    "    : (memref<8xi8>, index) -> (memref<8xi8>, index) {",
-    "  %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index",
-    "  scf.condition(%continue_while) %reallocated_iter, %counter_iter : memref<8xi8>, index",
-    "} do {",
-    "^bb0(%reallocated_loop : memref<8xi8>, %counter_loop : index):",
-    "  memref.dealloc %reallocated_loop : memref<8xi8>"
+  reused_region_canvas_repeat->add_during_lifetime({//TODO: 这里替换为scf.for的写法
+    "%reallocated_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
+    "    iter_args(%reallocated_iter = %reallocated)",
+    "    -> (memref<8xi8>) {",
+    "  memref.dealloc %reallocated_iter : memref<8xi8>"
   });
 
   reused_region_canvas_repeat->add_during_lifetime(allocation);
 
-  reused_region_canvas_repeat->add_during_lifetime({
-    "  %next_counter_loop = arith.addi %counter_loop, %c1_loop : index",
-    "  scf.yield %new_reallocated, %next_counter_loop : memref<8xi8>, index",
-    "}"
-  });
+  std::vector<std::string> repeated_yield = 
+    {"  scf.yield %new_reallocated : memref<8xi8>",
+     "}"};
+  reused_region_canvas_repeat->add_during_lifetime( repeated_yield);
   reused_region_canvas_repeat->add_during_lifetime(access_type_code);
   reused_region_canvas_repeat->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
   reused_region_canvas_repeat->add_variant_description_line("with repeated attempts");
@@ -677,26 +676,27 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
   reused_region_canvas_repeated->add_to_f_body(  store_last_address );
   reused_region_canvas_repeated->add_to_f_body(access_type_code.to_lines());
   reused_region_canvas_repeated->add_at(reused_region_canvas_repeated->get_f_call_pos(),
-    std::vector<std::string>{
+    std::vector<std::string>{//TODO: 这里替换为scf.for的写法
         "%test_success = arith.constant 42 : i32",
       "%c0_loop = arith.constant 0 : index",
       "%c1_loop = arith.constant 1 : index",
       "%c_max_loop = arith.constant " + max_reallocated_retries_validation + " : index",
       "%ctrue_loop = arith.constant 1 : i1",
-      "%counter_while, %not_matched_while = scf.while (%counter_iter = %c0_loop, %not_matched_iter = %ctrue_loop) : (index, i1) -> (index, i1) {",
-      "  %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index",
-      "  %cond_while = arith.andi %continue_while, %not_matched_iter : i1",
-      "  scf.condition(%cond_while) %counter_iter, %not_matched_iter : index, i1",
-      "} do {",
-      "^bb0(%counter_loop : index, %not_matched_loop : i1):"
+      "%not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
+      "    iter_args(%not_matched_iter = %ctrue_loop)",
+      "    -> (i1) {",
+      "  %next_not_matched = scf.if %not_matched_iter -> (i1) {"
     },
     "  "
   );
   reused_region_canvas_repeated->add_at(reused_region_canvas_repeated->get_f_call_pos() + 1,
     std::vector<std::string>{
-      "  %cfalse = arith.constant 0 : i1",
-      "  %next_counter = arith.addi %counter_loop, %c1_loop : index",
-      "  scf.yield %next_counter, %cfalse : index, i1",
+      "    %cfalse = arith.constant 0 : i1",
+      "    scf.yield %cfalse : i1",
+      "  } else {",
+      "    scf.yield %not_matched_iter : i1",
+      "  }",
+      "  scf.yield %next_not_matched : i1",
       "}",
       "func.call @exit(%test_success) : (i32) -> ()"
     },
@@ -776,26 +776,27 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
   reused_region_canvas_array_repeated->add_to_f_body(access_type_code_array_repeated.to_lines());
   reused_region_canvas_array_repeated->add_to_f_body("func.call @exit(%test_success) : (i32) -> ()");
   reused_region_canvas_array_repeated->add_at(reused_region_canvas_array_repeated->get_f_call_pos(),
-    std::vector<std::string>{
+    std::vector<std::string>{//TODO: 这里替换为scf.for的写法
       "%test_success = arith.constant 42 : i32",
       "%c0_loop = arith.constant 0 : index",
       "%c1_loop = arith.constant 1 : index",
       "%c_max_loop = arith.constant " + max_reallocated_retries_validation + " : index",
       "%ctrue_loop = arith.constant 1 : i1",
-      "%counter_while, %not_matched_while = scf.while (%counter_iter = %c0_loop, %not_matched_iter = %ctrue_loop) : (index, i1) -> (index, i1) {",
-      "  %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index",
-      "  %cond_while = arith.andi %continue_while, %not_matched_iter : i1",
-      "  scf.condition(%cond_while) %counter_iter, %not_matched_iter : index, i1",
-      "} do {",
-      "^bb0(%counter_loop : index, %not_matched_loop : i1):"
+      "%not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
+      "    iter_args(%not_matched_iter = %ctrue_loop)",
+      "    -> (i1) {",
+      "  %next_not_matched = scf.if %not_matched_iter -> (i1) {"
     },
     "  "
   );
   reused_region_canvas_array_repeated->add_at(reused_region_canvas_array_repeated->get_f_call_pos() + 1,
     std::vector<std::string>{
-      "  %cfalse = arith.constant 0 : i1",
-      "  %next_counter = arith.addi %counter_loop, %c1_loop : index",
-      "  scf.yield %next_counter, %cfalse : index, i1",
+      "    %cfalse = arith.constant 0 : i1",
+      "    scf.yield %cfalse : i1",
+      "  } else {",
+      "    scf.yield %not_matched_iter : i1",
+      "  }",
+      "  scf.yield %next_not_matched : i1",
       "}",
       "func.call @exit(%test_success) : (i32) -> ()"
     },

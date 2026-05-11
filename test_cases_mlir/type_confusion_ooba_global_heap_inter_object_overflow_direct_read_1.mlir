@@ -18,13 +18,13 @@ module {
 
   func.func @use(%arg0: i8) -> () { func.return }
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<311xi8> = dense<170>
+  memref.global @parent : memref<61xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 303 : index
+    %distance = arith.constant 53 : index
     %c1 = arith.constant 1 : index
     %c2 = arith.constant 2 : index
     %c4 = arith.constant 4 : index
@@ -32,9 +32,9 @@ module {
     // locals
 
 
-    %parent = memref.get_global @parent : memref<311xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<311xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[303][8][1] : memref<311xi8> to memref<8xi8, strided<[1], offset: 303>>
+    %parent = memref.get_global @parent : memref<61xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<61xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[53][8][1] : memref<61xi8> to memref<8xi8, strided<[1], offset: 53>>
     %distance_negated = arith.subi %c0, %distance : index
     %viewed = memref.view %parent_origin[%c4][] : memref<8xi8, strided<[1], offset: 0>> to memref<2xi32>
     scf.for %i = %c0 to %c2 step %c1 {

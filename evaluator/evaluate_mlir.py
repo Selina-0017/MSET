@@ -712,7 +712,8 @@ def evaluate_all(
     total_variants = sum(len(v) for v in grouped.values())
     print(f"Found {total_groups} test cases, {total_variants} variants.")
     if skipped_variants > 0:
-        print(f"Skipped {skipped_variants} misuse-of-free variants.")
+        print(
+        f"We skipped {skipped_variants} misuse‑of‑free variants, due to the difficulty of reproducing the behavior of \"free part of\" memory objects at the MLIR level.")
 
     # Build work items
     tmp_base = Path(tempfile.gettempdir()) / "mset_mlir_eval"

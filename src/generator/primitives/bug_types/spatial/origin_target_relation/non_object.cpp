@@ -45,7 +45,6 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > NonObject::generate(
     "%distance_negated = arith.subi %c0, %distance : index"
   );
   origin_canvas->set_lifetime_pos(origin_canvas->get_current_pos_in_f());
-
   auto variant = std::make_shared<OriginTargetCodeCanvas>(
     origin_canvas, origin_size, origin_size, "origin", "origin",
     "distance", "distance_negated", /*is_target_allocated=*/false, false, distance_up_static
@@ -53,14 +52,13 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > NonObject::generate(
   variant->set_lifetime_pos(origin_canvas->get_lifetime_pos());
   variant->add_variant_description_line("target after origin (overflow)");
   variants.push_back(variant);
-
+  
   // underflow variant: target before origin
   ssize_t distance_down = static_cast<ssize_t>(origin_size) + 1;
   origin_canvas->add_to_f_body(
     "%underflow_dist = arith.constant " + std::to_string(distance_down) + " : index"
   );
   origin_canvas->set_lifetime_pos(origin_canvas->get_current_pos_in_f());
-
   variant = std::make_shared<OriginTargetCodeCanvas>(
     origin_canvas, origin_size, origin_size, "origin", "origin",
     "underflow_dist", "N/A", /*is_target_allocated=*/false, /*requires_underflow=*/true, -1

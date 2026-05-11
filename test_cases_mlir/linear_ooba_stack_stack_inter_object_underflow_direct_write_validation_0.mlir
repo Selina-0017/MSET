@@ -27,38 +27,33 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 286 : index
+    %distance = arith.constant 717 : index
     %c0xFF = arith.constant 255 : i8
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-    %parent = memref.alloca() : memref<294xi8>
+    %parent = memref.alloca() : memref<725xi8>
 
-    %parent_origin = memref.subview %parent[0][8][1] : memref<294xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[286][8][1] : memref<294xi8> to memref<8xi8, strided<[1], offset: 286>>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<725xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[717][8][1] : memref<725xi8> to memref<8xi8, strided<[1], offset: 717>>
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 286>>
+      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 717>>
     }
     %distance_negated = arith.subi %c0, %distance : index
-    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 286>>
+    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 717>>
     func.call @use(%use_val_parent_target) : (i8) -> ()
     %use_val_parent_origin = memref.load %parent_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_parent_origin) : (i8) -> ()
     
-    %final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {
-      %cond = arith.cmpi slt, %reach_index, %c0 : index
-      scf.condition(%cond) %reach_index : index
-    } do {
-    ^bb0(%reach_index: index):
-      memref.store %c0xFF, %parent_target[%reach_index] : memref<8xi8, strided<[1], offset: 286>>
-      %next_reach_index = arith.subi %reach_index, %c1 : index
-      scf.yield %next_reach_index : index
+    scf.for %reach_index = %c0 to %c0 step %c1 {
+      %index = arith.subi %c0, %reach_index : index
+      memref.store %c0xFF, %parent_target[%index] : memref<8xi8, strided<[1], offset: 717>>
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xFF, %parent_target[%i] : memref<8xi8, strided<[1], offset: 286>>
+      memref.store %c0xFF, %parent_target[%i] : memref<8xi8, strided<[1], offset: 717>>
     }
     func.call @exit(%test_success) : (i32) -> ()
 

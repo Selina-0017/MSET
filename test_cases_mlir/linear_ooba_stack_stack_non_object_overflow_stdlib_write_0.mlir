@@ -42,14 +42,8 @@ module {
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
     func.call @use(%use_val_origin) : (i8) -> ()
     
-    %final_i = scf.while (%i = %c0) : (index) -> index {
-      %cond = arith.cmpi slt, %i, %distance : index
-      scf.condition(%cond) %i : index
-    } do {
-    ^bb0(%i: index):
+    scf.for %i = %c0 to %distance step %c1 {
       memref.store %c0xFF, %origin[%i] : memref<8xi8>
-      %next_i = arith.addi %i, %c1 : index
-      scf.yield %next_i : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xFF, %origin[%i] : memref<8xi8>

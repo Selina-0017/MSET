@@ -36,19 +36,15 @@ module {
   %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
     %reallocated = memref.alloc() : memref<8xi8>
 
-  %reallocated_while, %counter_while = scf.while (%reallocated_iter = %reallocated, %counter_iter = %c0_loop)
-      : (memref<8xi8>, index) -> (memref<8xi8>, index) {
-    %continue_while = arith.cmpi slt, %counter_iter, %c_max_loop : index
-    scf.condition(%continue_while) %reallocated_iter, %counter_iter : memref<8xi8>, index
-  } do {
-  ^bb0(%reallocated_loop : memref<8xi8>, %counter_loop : index):
-    memref.dealloc %reallocated_loop : memref<8xi8>
+  %reallocated_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop
+      iter_args(%reallocated_iter = %reallocated)
+      -> (memref<8xi8>) {
+    memref.dealloc %reallocated_iter : memref<8xi8>
     %new_reallocated = memref.alloc() : memref<8xi8>
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %new_reallocated[%i] : memref<8xi8>
     }
-    %next_counter_loop = arith.addi %counter_loop, %c1_loop : index
-    scf.yield %new_reallocated, %next_counter_loop : memref<8xi8>, index
+    scf.yield %new_reallocated : memref<8xi8>
   }
   scf.for %i = %c0 to %c8 step %c1 {
     %val = memref.load %view_target[%i] : memref<?xi8>

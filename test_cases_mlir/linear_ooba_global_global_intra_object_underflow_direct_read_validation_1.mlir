@@ -40,15 +40,10 @@ module {
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 8>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
     
-    %final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {
-      %cond = arith.cmpi slt, %reach_index, %c0 : index
-      scf.condition(%cond) %reach_index : index
-    } do {
-    ^bb0(%reach_index: index):
-      %val = memref.load %s_target[%reach_index] : memref<8xi8, strided<[1], offset: 0>>
+    scf.for %reach_index = %c0 to %c0 step %c1 {
+      %index = arith.subi %c0, %reach_index : index
+      %val = memref.load %s_target[%index] : memref<8xi8, strided<[1], offset: 0>>
       func.call @use(%val) : (i8) -> ()
-      %next_reach_index = arith.subi %reach_index, %c1 : index
-      scf.yield %next_reach_index : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       %val = memref.load %s_target[%i] : memref<8xi8, strided<[1], offset: 0>>

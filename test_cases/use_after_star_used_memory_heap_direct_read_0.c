@@ -24,7 +24,7 @@
 #endif
 
 volatile void *_use(volatile void *p) { return p; }
-const char content[8] = "ZZZZZZZ";
+const char content[8] = {'z','z','z','z','z','z','z','\0'};
 
 // types
 
@@ -44,7 +44,7 @@ int f()
   free(target);
   char *reallocated = (char *)malloc( 8 );
 
-  if ( GET_ADDR_BITS(target) != GET_ADDR_BITS(reallocated) ) _exit(PRECONDITIONS_FAILED_VALUE);
+  if ( GET_ADDR_BITS(target) != GET_ADDR_BITS(reallocated) ) _exit(43);
   volatile char read_value[8];
   volatile size_t i;
   for (i = 0; i < 8; i++)
@@ -52,7 +52,7 @@ int f()
     read_value[i] = target_address[i];
   }
   _use(read_value);
-  _exit(TEST_CASE_SUCCESSFUL_VALUE);
+  _exit(42);
   free(reallocated);
   return 0;
 }

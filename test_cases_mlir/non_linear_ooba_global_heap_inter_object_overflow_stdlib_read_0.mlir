@@ -17,20 +17,20 @@ module {
 
   func.func @use(%arg0: i8) -> () { func.return }
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<677xi8> = dense<170>
+  memref.global @parent : memref<185xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 669 : index
+    %distance = arith.constant 177 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.get_global @parent : memref<677xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<677xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[669][8][1] : memref<677xi8> to memref<8xi8, strided<[1], offset: 669>>
+    %parent = memref.get_global @parent : memref<185xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<185xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[177][8][1] : memref<185xi8> to memref<8xi8, strided<[1], offset: 177>>
     %distance_negated = arith.subi %c0, %distance : index
     %read_value_248 = memref.alloca() : memref<8xi8>
     %src_slice = memref.subview %parent_origin[%distance][8][1] : memref<8xi8, strided<[1], offset: 0>> to memref<8xi8, strided<[1], offset: ?>>

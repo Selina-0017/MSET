@@ -50,14 +50,8 @@ module {
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
     %negadist_variant = arith.subi %c0, %distance_negated : index
-    %final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {
-      %cond = arith.cmpi slt, %reach_index, %negadist_variant : index
-      scf.condition(%cond) %reach_index : index
-    } do {
-    ^bb0(%reach_index: index):
+    scf.for %reach_index = %c0 to %negadist_variant step %c1 {
       memref.store %c0xFF, %s_origin[%reach_index] : memref<8xi8, strided<[1], offset: 0>>
-      %next_reach_index = arith.addi %reach_index, %c1 : index
-      scf.yield %next_reach_index : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xFF, %s_origin[%i] : memref<8xi8, strided<[1], offset: 0>>

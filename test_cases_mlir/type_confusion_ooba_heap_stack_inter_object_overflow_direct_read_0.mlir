@@ -27,21 +27,21 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 115 : index
+    %distance = arith.constant 601 : index
     %c2 = arith.constant 2 : index
     %c4 = arith.constant 4 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.alloc() : memref<123xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<123xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[115][8][1] : memref<123xi8> to memref<8xi8, strided<[1], offset: 115>>
+    %parent = memref.alloc() : memref<609xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<609xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[601][8][1] : memref<609xi8> to memref<8xi8, strided<[1], offset: 601>>
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 115>>
+      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 601>>
     }
     %distance_negated = arith.subi %c0, %distance : index
     %viewed = memref.view %parent_origin[%c0][%c2] : memref<8xi8, strided<[1], offset: 0>> to memref<?xi32>
@@ -59,7 +59,7 @@ module {
     }
     func.call @exit(%test_success) : (i32) -> ()
 
-    memref.dealloc %parent : memref<123xi8>
+    memref.dealloc %parent : memref<609xi8>
     return %c0_i32 : i32
   }
 

@@ -15,19 +15,6 @@
 #include "generator/primitives/access_types/read_action.h"
 #include "generator/primitives/bug_types/spatial/flow/flow.h"
 
-static bool isUnderFlow( std::function<std::vector<std::string>(const std::string&)> generate_counter_update){
-  bool is_underflow = false;
-  std::vector<std::string> counter_update = generate_counter_update("reach_index");
-  for (const auto& line : counter_update)
-  {
-    if (line.find("subi") != std::string::npos)
-    {
-      is_underflow = true;
-      break;
-    }
-  }
-  return is_underflow;
-}
 // simple generate
 std::vector<std::string> DirectLocation::generate(std::shared_ptr<AccessAction> action, const std::string &access_var_name, size_t size, size_t array_size, const std::string &index_var, bool needs_strided, const std::string &offset, const std::string &custom_type) const
 {
@@ -340,8 +327,8 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
       break;
     }
   }
-  std::string index_var = "reach_index" ;
-  std::string appendlines = is_underflow ? "subi" : "addi";
+  std::string index_var = is_underflow ? "index" : "reach_index";
+  std::string appendlines = is_underflow ? "  %index = arith.subi %c0, %reach_index : index" : "";
   std::string dist = (is_number(distance) && std::stoll(distance) == 0) ? "c" + distance : distance;
   std::string stride_suffix = needs_strided ? ", strided<[1], offset: " + offset + ">>" : ">";
   std::string negadist_val;
@@ -359,12 +346,8 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
 
     split_access.result = from;
     split_access.access_lines.emplace_back(negadist_val);
-    split_access.access_lines.emplace_back("%final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {");
-    split_access.access_lines.emplace_back("  %cond = arith.cmpi slt, %reach_index, %" + dist + " : index");
-    split_access.access_lines.emplace_back("  scf.condition(%cond) %reach_index : index");
-    split_access.access_lines.emplace_back("} do {");
-    split_access.access_lines.emplace_back("^bb0(%reach_index: index):");
-    // if (!appendlines.empty()) split_access.access_lines.emplace_back(appendlines);
+    split_access.access_lines.emplace_back("scf.for %reach_index = %c0 to %" + dist + " step %c1 {");
+    if (!appendlines.empty()) split_access.access_lines.emplace_back(appendlines);
     {
       std::string idx_expr = "%" + index_var;
       if (!offset.empty() && offset != "0" && !needs_strided) {
@@ -373,10 +356,8 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
         idx_expr = "%__idx";
       }
       split_access.access_lines.emplace_back("  %val = memref.load %" + from + "[" + idx_expr + "] : memref<8xi8" + stride_suffix);
-      split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
+    split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
     }
-    split_access.access_lines.emplace_back("  %next_reach_index = arith." +appendlines+ " %reach_index, %c1 : index");
-    split_access.access_lines.emplace_back("  scf.yield %next_reach_index : index");
     split_access.access_lines.emplace_back("}");
   }
   else
@@ -389,12 +370,8 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
     };
     split_access.result = from;
     split_access.access_lines.emplace_back(negadist_val);
-    split_access.access_lines.emplace_back("%final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {");
-    split_access.access_lines.emplace_back("  %cond = arith.cmpi slt, %reach_index, %" + dist + " : index");
-    split_access.access_lines.emplace_back("  scf.condition(%cond) %reach_index : index");
-    split_access.access_lines.emplace_back("} do {");
-    split_access.access_lines.emplace_back("^bb0(%reach_index: index):");
-    // if (!appendlines.empty()) split_access.access_lines.emplace_back(appendlines);
+    split_access.access_lines.emplace_back("scf.for %reach_index = %c0 to %" + dist + " step %c1 {");
+    if (!appendlines.empty()) split_access.access_lines.emplace_back(appendlines);
     {
       std::string idx_expr = "%" + index_var;
       if (!offset.empty() && offset != "0" && !needs_strided) {
@@ -404,8 +381,6 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
       }
       split_access.access_lines.emplace_back("  memref.store %c0xFF, %" + from + "[" + idx_expr + "] : memref<8xi8" + stride_suffix);
     }
-    split_access.access_lines.emplace_back("  %next_reach_index = arith." + appendlines + " %reach_index, %c1 : index");
-    split_access.access_lines.emplace_back("  scf.yield %next_reach_index : index");
     split_access.access_lines.emplace_back("}");
   }
   split_access.description = "index";

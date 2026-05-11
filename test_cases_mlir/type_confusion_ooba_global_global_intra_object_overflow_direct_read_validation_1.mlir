@@ -11,7 +11,7 @@
 // Access type: direct, read
 // Variant:
 //  - target declared after origin
-//  - normal access to target via offset
+//  - using load widening
 
 module {
   // globals
@@ -25,8 +25,7 @@ module {
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
     %distance = arith.constant 9 : index
-    %c1 = arith.constant 1 : index
-    %c8 = arith.constant 8 : index
+    %idx = arith.constant 7 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
@@ -35,11 +34,8 @@ module {
     %s_origin = memref.subview %s[0][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 0>>
     %s_target = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
     %distance_negated = arith.subi %c0, %distance : index
-    scf.for %j = %c0 to %c8 step %c1 {
-      %idx = arith.addi %j, %c0 : index
-      %val = memref.load %s_origin[%idx] : memref<8xi8, strided<[1], offset: 0>>
-      func.call @use(%val) : (i8) -> ()
-    }
+    %val = memref.load %s_origin[%idx] : memref<8xi8, strided<[1], offset: 0>>
+    func.call @use(%val) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

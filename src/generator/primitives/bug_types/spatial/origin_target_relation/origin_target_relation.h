@@ -111,6 +111,11 @@ public:
   bool get_forces_underflow() const { return forces_underflow; }
   bool is_target_allocated() const { return target_allocated; }
 
+  std::string get_origin_offset() const { return origin_offset; }
+  std::string get_target_offset() const { return target_offset; }
+  void set_origin_offset(const std::string &offset) { origin_offset = offset; }
+  void set_target_offset(const std::string &offset) { target_offset = offset; }
+
 
 private:
   void _update_indexes(code_pos_t from, size_t amount) override;
@@ -127,6 +132,8 @@ private:
   bool target_allocated;
   bool forces_underflow;
   ssize_t distance_static_value;
+  std::string origin_offset = "0";
+  std::string target_offset = "0";
 };
 
 class OriginTargetRelation: public Property

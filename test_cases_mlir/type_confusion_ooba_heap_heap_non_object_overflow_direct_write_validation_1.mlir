@@ -11,7 +11,7 @@
 // Access type: direct, write
 // Variant:
 //  - target after origin (overflow)
-//  - normal access to target via offset
+//  - using load widening
 
 module {
   // globals
@@ -27,6 +27,7 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %distance = arith.constant 9 : index
+    %idx = arith.constant 7 : index
     %c0xFF = arith.constant 255 : i8
     %c0_i32 = arith.constant 0 : i32
     // locals
@@ -37,10 +38,7 @@ module {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
     %distance_negated = arith.subi %c0, %distance : index
-    scf.for %j = %c0 to %c8 step %c1 {
-      %idx = arith.addi %j, %c0 : index
-      memref.store %c0xFF, %origin[%idx] : memref<8xi8>
-    }
+    memref.store %c0xFF, %origin[%idx] : memref<8xi8>
     func.call @exit(%test_success) : (i32) -> ()
 
     memref.dealloc %origin : memref<8xi8>

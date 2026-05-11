@@ -29,35 +29,29 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 518 : index
+    %distance = arith.constant 876 : index
     %c0xFF = arith.constant 255 : i8
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-    %parent = memref.alloca() : memref<526xi8>
+    %parent = memref.alloca() : memref<884xi8>
 
-    %parent_origin = memref.subview %parent[0][8][1] : memref<526xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[518][8][1] : memref<526xi8> to memref<8xi8, strided<[1], offset: 518>>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<884xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[876][8][1] : memref<884xi8> to memref<8xi8, strided<[1], offset: 876>>
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 518>>
+      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 876>>
     }
     %distance_negated = arith.subi %c0, %distance : index
-    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 518>>
+    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 876>>
     func.call @use(%use_val_parent_target) : (i8) -> ()
     %use_val_parent_origin = memref.load %parent_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_parent_origin) : (i8) -> ()
     %negadist_variant = arith.subi %c0, %distance_negated : index
-    %final_reach_index = scf.while (%reach_index = %c0) : (index) -> index {
-      %cond = arith.cmpi slt, %reach_index, %negadist_variant : index
-      scf.condition(%cond) %reach_index : index
-    } do {
-    ^bb0(%reach_index: index):
+    scf.for %reach_index = %c0 to %negadist_variant step %c1 {
       memref.store %c0xFF, %parent_origin[%reach_index] : memref<8xi8, strided<[1], offset: 0>>
-      %next_reach_index = arith.addi %reach_index, %c1 : index
-      scf.yield %next_reach_index : index
     }
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xFF, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
