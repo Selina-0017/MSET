@@ -661,7 +661,9 @@ def process_results(
     print("Overall results:")
     print_results(raw_overall)
     if skipped > 0:
-        print(f"Skipped {skipped} misuse-of-free variants.")
+        print(
+        f"We skipped {skipped} misuse‑of‑free variants, due to the difficulty of reproducing the behavior of \"free part of\" memory objects at the MLIR level.")
+
 
 
 
@@ -713,7 +715,7 @@ def evaluate_all(
     print(f"Found {total_groups} test cases, {total_variants} variants.")
     if skipped_variants > 0:
         print(
-        f"We skipped {skipped_variants} misuse‑of‑free variants, due to the difficulty of reproducing the behavior of \"free part of\" memory objects at the MLIR level.")
+        f"{skipped_variants} misuse‑of‑free variants skipped")
 
     # Build work items
     tmp_base = Path(tempfile.gettempdir()) / "mset_mlir_eval"

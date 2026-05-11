@@ -60,7 +60,8 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > IntraObject::generate(
   region_canvas = origin->generate(
     canvas_ptr, "s", "target", target_size, "origin", origin_size, true
   );
-  distance_value = -static_cast<ssize_t>(target_size);
+  static_dist = -(static_cast<ssize_t>(target_size));
+  distance_value = -(static_cast<ssize_t>(target_size) + 1);
   region_canvas->add_to_f_body(
     "%distance = arith.constant " + std::to_string(std::abs(distance_value)) + " : index"
   );
@@ -70,7 +71,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > IntraObject::generate(
 
   variant = std::make_shared<OriginTargetCodeCanvas>(
     region_canvas, target_size, origin_size, "s_target", "s_origin",
-    "distance", "distance_negated", true, false, distance_value
+    "distance", "distance_negated", true, false, static_dist
   );
   variant->set_lifetime_pos(region_canvas->get_lifetime_pos());
   variant->add_variant_description_line("target declared before origin");

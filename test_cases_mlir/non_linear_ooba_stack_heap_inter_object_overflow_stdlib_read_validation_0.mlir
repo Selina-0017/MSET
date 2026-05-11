@@ -26,23 +26,23 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 514 : index
+    %distance = arith.constant 689 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-    %parent = memref.alloca() : memref<522xi8>
+    %parent = memref.alloca() : memref<697xi8>
 
-    %parent_origin = memref.subview %parent[0][8][1] : memref<522xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[514][8][1] : memref<522xi8> to memref<8xi8, strided<[1], offset: 514>>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<697xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[689][8][1] : memref<697xi8> to memref<8xi8, strided<[1], offset: 689>>
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 514>>
+      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 689>>
     }
     %distance_negated = arith.subi %c0, %distance : index
     %read_value_233 = memref.alloca() : memref<8xi8>
-    %src_slice = memref.subview %parent_target[%c0][8][1] : memref<8xi8, strided<[1], offset: 514>> to memref<8xi8, strided<[1], offset: ?>>
+    %src_slice = memref.subview %parent_target[%c0][8][1] : memref<8xi8, strided<[1], offset: 689>> to memref<8xi8, strided<[1], offset: ?>>
     memref.copy %src_slice, %read_value_233 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>
     %use_val_read_value_233 = memref.load %read_value_233[%c0] : memref<8xi8>
     func.call @use(%use_val_read_value_233) : (i8) -> ()

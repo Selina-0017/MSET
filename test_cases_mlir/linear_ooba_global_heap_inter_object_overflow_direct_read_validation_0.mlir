@@ -18,34 +18,34 @@ module {
 
   func.func @use(%arg0: i8) -> () { func.return }
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<898xi8> = dense<170>
+  memref.global @parent : memref<462xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 890 : index
+    %distance = arith.constant 454 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.get_global @parent : memref<898xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<898xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[890][8][1] : memref<898xi8> to memref<8xi8, strided<[1], offset: 890>>
+    %parent = memref.get_global @parent : memref<462xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<462xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[454][8][1] : memref<462xi8> to memref<8xi8, strided<[1], offset: 454>>
     %distance_negated = arith.subi %c0, %distance : index
-    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 890>>
+    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 454>>
     func.call @use(%use_val_parent_target) : (i8) -> ()
     %use_val_parent_origin = memref.load %parent_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_parent_origin) : (i8) -> ()
     
     scf.for %reach_index = %c0 to %c0 step %c1 {
-      %val = memref.load %parent_target[%reach_index] : memref<8xi8, strided<[1], offset: 890>>
+      %val = memref.load %parent_target[%reach_index] : memref<8xi8, strided<[1], offset: 454>>
       func.call @use(%val) : (i8) -> ()
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      %val = memref.load %parent_target[%i] : memref<8xi8, strided<[1], offset: 890>>
+      %val = memref.load %parent_target[%i] : memref<8xi8, strided<[1], offset: 454>>
       func.call @use(%val) : (i8) -> ()
     }
     func.call @exit(%test_success) : (i32) -> ()

@@ -17,13 +17,13 @@ module {
 
   func.func @use(%arg0: i8) -> () { func.return }
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<706xi8> = dense<170>
+  memref.global @parent : memref<1023xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 698 : index
+    %distance = arith.constant 1015 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0xFF = arith.constant 255 : i8
@@ -31,9 +31,9 @@ module {
     // locals
 
 
-    %parent = memref.get_global @parent : memref<706xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<706xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[698][8][1] : memref<706xi8> to memref<8xi8, strided<[1], offset: 698>>
+    %parent = memref.get_global @parent : memref<1023xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<1023xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[1015][8][1] : memref<1023xi8> to memref<8xi8, strided<[1], offset: 1015>>
     %distance_negated = arith.subi %c0, %distance : index
     scf.for %j = %c0 to %c8 step %c1 {
       %idx = arith.addi %j, %distance : index

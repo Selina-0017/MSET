@@ -17,23 +17,23 @@ module {
 
   func.func @use(%arg0: i8) -> () { func.return }
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<778xi8> = dense<170>
+  memref.global @parent : memref<949xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 770 : index
+    %distance = arith.constant 941 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
 
-    %parent = memref.get_global @parent : memref<778xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<778xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[770][8][1] : memref<778xi8> to memref<8xi8, strided<[1], offset: 770>>
+    %parent = memref.get_global @parent : memref<949xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<949xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[941][8][1] : memref<949xi8> to memref<8xi8, strided<[1], offset: 941>>
     %distance_negated = arith.subi %c0, %distance : index
     %read_value_249 = memref.alloca() : memref<8xi8>
-    %src_slice = memref.subview %parent_target[%c0][8][1] : memref<8xi8, strided<[1], offset: 770>> to memref<8xi8, strided<[1], offset: ?>>
+    %src_slice = memref.subview %parent_target[%c0][8][1] : memref<8xi8, strided<[1], offset: 941>> to memref<8xi8, strided<[1], offset: ?>>
     memref.copy %src_slice, %read_value_249 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>
     %use_val_read_value_249 = memref.load %read_value_249[%c0] : memref<8xi8>
     func.call @use(%use_val_read_value_249) : (i8) -> ()

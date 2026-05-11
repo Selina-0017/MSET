@@ -23,7 +23,7 @@ module {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 8 : index
+    %distance = arith.constant 9 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 

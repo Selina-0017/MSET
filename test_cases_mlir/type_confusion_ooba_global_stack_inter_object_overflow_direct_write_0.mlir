@@ -18,13 +18,13 @@ module {
 
   func.func @use(%arg0: i8) -> () { func.return }
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<538xi8> = dense<170>
+  memref.global @parent : memref<783xi8> = dense<170>
 
   func.func @f() -> i32 {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
-    %distance = arith.constant 530 : index
+    %distance = arith.constant 775 : index
     %c1 = arith.constant 1 : index
     %c2 = arith.constant 2 : index
     %c4 = arith.constant 4 : index
@@ -33,9 +33,9 @@ module {
     // locals
 
 
-    %parent = memref.get_global @parent : memref<538xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<538xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[530][8][1] : memref<538xi8> to memref<8xi8, strided<[1], offset: 530>>
+    %parent = memref.get_global @parent : memref<783xi8>
+    %parent_origin = memref.subview %parent[0][8][1] : memref<783xi8> to memref<8xi8, strided<[1], offset: 0>>
+    %parent_target = memref.subview %parent[775][8][1] : memref<783xi8> to memref<8xi8, strided<[1], offset: 775>>
     %distance_negated = arith.subi %c0, %distance : index
     %viewed = memref.view %parent_origin[%c0][%c2] : memref<8xi8, strided<[1], offset: 0>> to memref<?xi32>
     %distance_div_4 = arith.divsi %distance, %c4 : index
