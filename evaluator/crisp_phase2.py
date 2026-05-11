@@ -116,7 +116,7 @@ def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
     if crisp:
         passes.extend(
             [
-                "func.func(asan-static-check)",
+                "func.func(asan-static-check, asan-fold-subview)",
                 "asan-optimization",
                 "canonicalize",
                 "cse",
@@ -124,7 +124,7 @@ def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
                 "canonicalize",
                 "cse",
                 "asan-hoist-check",
-                "func.func(asan-static-check)",
+                "func.func(asan-static-check, asan-fold-subview)",
                 "canonicalize",
                 "cse",
                 "asan-check-elimination",
