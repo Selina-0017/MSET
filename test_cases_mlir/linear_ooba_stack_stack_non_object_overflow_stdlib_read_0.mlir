@@ -42,6 +42,11 @@ module {
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
     func.call @use(%use_val_origin) : (i8) -> ()
     %read_value_86 = memref.alloca() : memref<1024xi8>
+    %is_valid = arith.cmpi sge, %distance, %c0 : index
+    scf.if %is_valid {
+      func.call @exit(%precond_fail) : (i32) -> ()
+      scf.yield
+    }
     
     scf.for %i = %c0 to %distance step %c1024 {
       %remaining = arith.subi %distance, %i : index

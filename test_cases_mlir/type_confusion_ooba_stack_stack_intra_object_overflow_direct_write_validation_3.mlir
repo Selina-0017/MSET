@@ -44,7 +44,7 @@ module {
       memref.store %c0xBB, %s_origin[%i] : memref<8xi8, strided<[1], offset: 8>>
     }
     %distance_negated = arith.subi %c0, %distance : index
-    memref.store %c0xFF, %s_origin[%idx] : memref<8xi8, strided<[1], offset: 0>>
+    memref.store %c0xFF, %s_origin[%idx] : memref<8xi8, strided<[1], offset: 8>>
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

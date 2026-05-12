@@ -41,6 +41,11 @@ module {
       memref.store %c0xBB, %s_origin[%i] : memref<8xi8, strided<[1], offset: 8>>
     }
     %distance_negated = arith.subi %c0, %distance : index
+    %is_valid = arith.cmpi sle, %distance, %c0 : index
+    scf.if %is_valid {
+      func.call @exit(%precond_fail) : (i32) -> ()
+      scf.yield
+    }
     scf.for %j = %c0 to %c8 step %c1 {
       %idx = arith.addi %j, %distance : index
       %val = memref.load %s_origin[%idx] : memref<8xi8, strided<[1], offset: 8>>

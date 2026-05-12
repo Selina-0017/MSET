@@ -98,8 +98,8 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate(
       variant_with_load_widening->get_origin_name(),
       origin_type,
       "c4",   // view offset: 4 bytes, causing second i32 to be OOB
-      "c1"    // access index: second i32
-    );
+      "c1" // access index: second i32
+    );//TODO
     variant_with_load_widening->add_during_lifetime(load_widening_code);
     variant_with_load_widening->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
     variant_with_load_widening->add_variant_description_line("using memref.view for load widening");
@@ -177,6 +177,9 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate_val
 
     // load widening variant
     std::shared_ptr<OriginTargetCodeCanvas> variant_with_load_widening = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
+    std::string origin_offset = "0";
+    if ( is_a<IntraObject>(origin_target_relation) && static_dist < 0 )
+      origin_offset = std::to_string(std::abs(static_dist));
     access_target_code = access_location->generate_uint8(
       access_action,
       variant_with_load_widening->get_origin_name(),
@@ -185,7 +188,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate_val
       8,
       nullptr,
       needs_strided,
-      "0"
+      origin_offset
     );
     variant_with_load_widening->add_during_lifetime(access_target_code);
     variant_with_load_widening->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");

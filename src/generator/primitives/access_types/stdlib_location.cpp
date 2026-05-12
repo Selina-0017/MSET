@@ -12,20 +12,6 @@
 #include <string>
 
 #include "misc.h"
-static bool isUnderFlow( std::function<std::vector<std::string>(const std::string&)> generate_counter_update){
-  bool is_underflow = false;
-  std::vector<std::string> counter_update = generate_counter_update("reach_index");
-  for (const auto& line : counter_update)
-  {
-    if (line.find("subi") != std::string::npos)
-    {
-      is_underflow = true;
-      break;
-    }
-  }
-  return is_underflow;
-}
-
 static std::string get_unique_read_value_name()
 {
   static std::atomic<size_t> counter{0};
@@ -45,7 +31,6 @@ AccessLocation::SplitAccess StdlibLocation::generate_split_aux_vars(
 {
   SplitAccess split_access;
   std::string size_str = std::to_string(size);
-  bool is_underflow = isUnderFlow(generate_counter_update);
   if (is_a<ReadAction>(action))
   {
     // READ: memref.copy
@@ -216,6 +201,11 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_index(
       "  memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>",
       "}",
     };
+    if (generate_preconditions_check_distance)
+    {
+      auto preconds = generate_preconditions_check_distance(distance);
+      split_access.access_lines.insert(split_access.access_lines.begin(), preconds.begin(), preconds.end());
+    }
     split_access.access_lines.emplace_back("%use_val_" + rv + " = memref.load %" + rv + "[%c0] : memref<1024xi8>");
     split_access.access_lines.emplace_back("func.call @use(%use_val_" + rv + ") : (i8) -> ()");
     split_access.result = from;
@@ -229,12 +219,22 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_index(
       {"c1", "index", "", "1"},
       {"c0xFF", "i8", "", "255"},
     };
+    // if (generate_preconditions_check_in_range)
+    // {
+    //   split_access.access_lines.insert( split_access.access_lines.end(), {"if ( " + generate_preconditions_check_in_range("i", from, to) + " ) _exit(PRECONDITIONS_FAILED_VALUE);"});
+    //   split_access.access_lines.insert( split_access.access_lines.end(), {"if ( " + generate_preconditions_check_in_range("step_distance", from, to) + " ) _exit(PRECONDITIONS_FAILED_VALUE);"});
+    // }//TODO
     split_access.access_lines = {
       negadist_val,
       "scf.for %i = %c0 to %" + dist + " step %c1 {",
       "  memref.store %c0xFF, %" + from + "[%i] : memref<8xi8" + type_suffix,
       "}",
     };
+    if (generate_preconditions_check_distance)
+    {
+      auto preconds = generate_preconditions_check_distance(distance);
+      split_access.access_lines.insert(split_access.access_lines.begin(), preconds.begin(), preconds.end());
+    }
     split_access.result = from;
   }
   split_access.description = "index";
@@ -285,6 +285,11 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_aux_ptr(
       "  memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>",
       "}",
     };
+    if (generate_preconditions_check_distance)
+    {
+      auto preconds = generate_preconditions_check_distance(distance);
+      split_access.access_lines.insert(split_access.access_lines.begin(), preconds.begin(), preconds.end());
+    }
     split_access.access_lines.emplace_back("%use_val_" + rv + " = memref.load %" + rv + "[%c0] : memref<1024xi8>");
     split_access.access_lines.emplace_back("func.call @use(%use_val_" + rv + ") : (i8) -> ()");
     split_access.result = from;
@@ -298,11 +303,23 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_aux_ptr(
       {"c1", "index", "", "1"},
       {"c0xFF", "i8", "", "255"},
     };
+    split_access.access_lines = {};
+    // if (generate_preconditions_check_in_range)
+    // {
+    //   split_access.access_lines.push_back( "if ( " + generate_preconditions_check_in_range("aux_ptr", from, to) + " ) _exit(PRECONDITIONS_FAILED_VALUE);" );
+    //   split_access.access_lines.push_back( "if ( " + generate_preconditions_check_in_range("step_distance", from, to) + " ) _exit(PRECONDITIONS_FAILED_VALUE);" );
+    // }
+
     split_access.access_lines = {
       "scf.for %i = %c0 to %" + dist + " step %c1 {",
       "  memref.store %c0xFF, %" + from + "[%i] : memref<8xi8" + type_suffix,
       "}",
     };
+    if (generate_preconditions_check_distance)
+    {
+      auto preconds = generate_preconditions_check_distance(distance);
+      split_access.access_lines.insert(split_access.access_lines.begin(), preconds.begin(), preconds.end());
+    }
     split_access.result = from;
   }
 
@@ -338,6 +355,11 @@ std::vector<std::string> StdlibLocation::generate_at_index(
       "%use_val_" + rv + " = memref.load %" + rv + "[%c0] : memref<" + size_str + "xi8>",
       "func.call @use(%use_val_" + rv + ") : (i8) -> ()",
     };
+    if (generate_preconditions_check_distance)
+    {
+      auto preconds = generate_preconditions_check_distance(index);
+      lines.insert(lines.begin(), preconds.begin(), preconds.end());
+    }
   }
   else
   {
@@ -352,6 +374,11 @@ std::vector<std::string> StdlibLocation::generate_at_index(
       "  memref.store %c0xFF, %" + access_var_name + "[%idx] : " + src_type,
       "}",
     };
+    if (generate_preconditions_check_distance)
+    {
+      auto preconds = generate_preconditions_check_distance(index);
+      lines.insert(lines.begin(), preconds.begin(), preconds.end());
+    }
   }
   return lines;
 }

@@ -51,6 +51,42 @@ ACCESS_LOCATIONS_INFO = ["Stdlib", "Direct"]
 ACCESS_ACTIONS = ["read", "write"]
 ACCESS_ACTIONS_INFO = ["Read", "Write"]
 
+# Bug type aliases for user-friendly --bug-type filtering.
+# Maps common lowercase/no-underscore variants to the canonical display name.
+BUG_TYPE_ALIASES: Dict[str, str] = {
+    # Spatial
+    "linear_ooba": "Linear OOBA",
+    "linearooba": "Linear OOBA",
+    "linear": "Linear OOBA",
+    "non_linear_ooba": "Non-Linear OOBA",
+    "nonlinearooba": "Non-Linear OOBA",
+    "nonlinear": "Non-Linear OOBA",
+    "type_confusion_ooba": "Type Confusion OOBA",
+    "typeconfusion": "Type Confusion OOBA",
+    "typeconfusionooba": "Type Confusion OOBA",
+    # Temporal
+    "misuse_of_free": "Misuse-of-free",
+    "misuseoffree": "Misuse-of-free",
+    "double_free": "Double-free",
+    "doublefree": "Double-free",
+    "use_after_star": "Use-after-*",
+    "useafterstar": "Use-after-*",
+}
+
+_ALL_BUG_TYPE_NAMES = set(BUG_TYPE_ALIASES.values())
+
+
+def normalize_bug_type(raw: str) -> Optional[str]:
+    """Convert user input to canonical bug type name, or None if invalid."""
+    key = raw.strip().lower()
+    if key in BUG_TYPE_ALIASES:
+        return BUG_TYPE_ALIASES[key]
+    # Also accept exact display names (case-insensitive)
+    for canonical in _ALL_BUG_TYPE_NAMES:
+        if canonical.lower() == key:
+            return canonical
+    return None
+
 
 # ---------------------------------------------------------------------------
 # Result enum matching MSET exec_result_t
@@ -679,10 +715,12 @@ def evaluate_all(
     verbose: bool,
     keep: bool,
     opt_level: int = 0,
+    bug_types: Optional[List[str]] = None,
 ) -> Tuple[
     Dict[str, List[ExecResult]],
     Dict[str, List[ExecResult]],
     List[ExecResult],
+    int,
 ]:
     """
     Returns:
@@ -694,9 +732,25 @@ def evaluate_all(
         print(f"ERROR: No .mlir test files found in {test_cases_dir}. Aborting.")
         sys.exit(1)
 
+    # Validate and canonicalize bug_types early
+    canonical_bug_types: Optional[List[str]] = None
+    if bug_types:
+        canonical_bug_types = []
+        for bt in bug_types:
+            normalized = normalize_bug_type(bt)
+            if normalized is None:
+                print(f"ERROR: Unknown bug type '{bt}'. Supported bug types:")
+                for name in sorted(_ALL_BUG_TYPE_NAMES):
+                    print(f"  - {name}")
+                sys.exit(1)
+            canonical_bug_types.append(normalized)
+        canonical_bug_types = list(dict.fromkeys(canonical_bug_types))  # dedup preserve order
+        print(f"Filtering by bug types: {', '.join(canonical_bug_types)}")
+
     # Parse and group by test case key
     grouped: Dict[str, List[TestCaseInformation]] = defaultdict(list)
     skipped_variants = 0
+    filtered_out = 0
     for f in mlir_files:
         tc = construct_from_file_name(f.name, str(f))
         if tc is None:
@@ -704,6 +758,16 @@ def evaluate_all(
         if isinstance(tc, TemporalTestCaseInformation) and tc.temporal_bug_name == "Misuse-of-free":
             skipped_variants += 1
             continue
+        # Apply bug-type filter
+        if canonical_bug_types is not None:
+            if isinstance(tc, TemporalTestCaseInformation):
+                if tc.temporal_bug_name not in canonical_bug_types:
+                    filtered_out += 1
+                    continue
+            elif isinstance(tc, SpatialTestCaseInformation):
+                if tc.spatial_bug_name not in canonical_bug_types:
+                    filtered_out += 1
+                    continue
         grouped[tc.get_test_case_key()].append(tc)
 
     # Sort variants: validation first, then by variant number
@@ -713,6 +777,8 @@ def evaluate_all(
     total_groups = len(grouped)
     total_variants = sum(len(v) for v in grouped.values())
     print(f"Found {total_groups} test cases, {total_variants} variants.")
+    if filtered_out > 0:
+        print(f"Filtered out {filtered_out} variants by bug type.")
     if skipped_variants > 0:
         print(
         f"{skipped_variants} misuse‑of‑free variants skipped")
@@ -851,7 +917,7 @@ def main():
     parser.add_argument(
         "--timeout",
         type=int,
-        default=30,
+        default=15,
         help="Timeout per test in seconds (default: 30)",
     )
     parser.add_argument(
@@ -872,6 +938,16 @@ def main():
         choices=[0, 1, 2, 3],
         help="Optimization level passed to crisp_phase2.py (default: 0)",
     )
+    parser.add_argument(
+        "--bug-type",
+        nargs="+",
+        default=None,
+        help=(
+            "Only run test cases matching the given bug type(s). "
+            "Examples: --bug-type linear_ooba type_confusion_ooba, "
+            "--bug-type linearooba, --bug-type Double-free"
+        ),
+    )
     args = parser.parse_args()
 
     (
@@ -887,6 +963,7 @@ def main():
         args.verbose,
         args.keep,
         args.opt,
+        args.bug_type,
     )
 
     process_results(

@@ -42,12 +42,20 @@ module {
     }
     %ptr_first = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
     %ptr_second = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
-    %distance = arith.subi %ptr_second, %ptr_first : index
+    %diff = arith.subi %ptr_second, %ptr_first : index
+    %minus_diff = arith.subi %c0, %diff : index
+    %is_pos = arith.cmpi sgt, %diff, %c0 : index
+    %distance = arith.select %is_pos, %diff, %minus_diff : index
     %distance_negated = arith.subi %c0, %distance : index
     %use_val_target = memref.load %target[%c0] : memref<8xi8>
     func.call @use(%use_val_target) : (i8) -> ()
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
     func.call @use(%use_val_origin) : (i8) -> ()
+    %is_valid = arith.cmpi sge, %distance, %c0 : index
+    scf.if %is_valid {
+      func.call @exit(%precond_fail) : (i32) -> ()
+      scf.yield
+    }
     
     scf.for %i = %c0 to %distance step %c1 {
       memref.store %c0xFF, %origin[%i] : memref<8xi8>

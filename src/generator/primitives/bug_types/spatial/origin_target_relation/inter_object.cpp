@@ -52,11 +52,20 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > InterObject::generate(
     {
     "%ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index",
     "%ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index",
+    "%c0 = arith.constant 0 : index",
+  });
     // distance = ptr_second - ptr_first
-    "%distance = arith.subi %ptr_second, %ptr_first : index"}
-  );
+  target_canvas->add_locals({
+    "%diff = arith.subi %ptr_second, %ptr_first : index",
+    "%minus_diff = arith.subi %c0, %diff : index",
+    "%is_pos = arith.cmpi sgt, %diff, %c0 : index",
+  });
+  
   target_canvas->add_locals(
-    {"%distance_negated = arith.subi %c0, %distance : index"}
+    {
+    "%distance = arith.select %is_pos, %diff, %minus_diff : index",
+    "%distance_negated = arith.subi %c0, %distance : index"
+    }
   );
 
   std::shared_ptr<OriginTargetCodeCanvas> variant = std::make_shared<OriginTargetCodeCanvas>( target_canvas, target_size, origin_size, "target", "origin", distance, distance_negated );
@@ -70,13 +79,19 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > InterObject::generate(
   origin_canvas->add_locals(
 {
     "%ptr_first = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index",
-    "%ptr_second = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index",
+    "%ptr_second = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index"
+      });
     // distance = ptr_second - ptr_first
-    "%distance = arith.subi %ptr_second, %ptr_first : index"}
-  );
-  origin_canvas->add_locals(
-    {"%distance_negated = arith.subi %c0, %distance : index"}
-  );
+  origin_canvas->add_locals({
+    "%diff = arith.subi %ptr_second, %ptr_first : index",
+    "%minus_diff = arith.subi %c0, %diff : index",
+    "%is_pos = arith.cmpi sgt, %diff, %c0 : index",
+  });
+  
+  origin_canvas->add_locals({
+    "%distance = arith.select %is_pos, %diff, %minus_diff : index",
+    "%distance_negated = arith.subi %c0, %distance : index"
+  });
 
   variant = std::make_shared<OriginTargetCodeCanvas>( origin_canvas, target_size, origin_size, "target", "origin", distance, distance_negated );
   variant->set_lifetime_pos( origin_canvas->get_lifetime_pos());

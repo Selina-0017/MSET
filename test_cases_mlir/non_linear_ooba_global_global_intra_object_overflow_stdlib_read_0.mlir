@@ -32,6 +32,11 @@ module {
     %s_origin = memref.subview %s[0][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 0>>
     %s_target = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
     %distance_negated = arith.subi %c0, %distance : index
+    %is_valid = arith.cmpi sge, %distance, %c0 : index
+    scf.if %is_valid {
+      func.call @exit(%precond_fail) : (i32) -> ()
+      scf.yield
+    }
     %read_value_360 = memref.alloca() : memref<8xi8>
     %src_slice = memref.subview %s_origin[%distance][8][1] : memref<8xi8, strided<[1], offset: 0>> to memref<8xi8, strided<[1], offset: ?>>
     memref.copy %src_slice, %read_value_360 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>

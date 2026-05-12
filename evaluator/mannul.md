@@ -26,7 +26,25 @@ python evaluate_mlir.py --keep
 
 # 使用 asan0 配置，优化级别 O2
 python evaluate_mlir.py --config asan0 --opt 2
+
+# 只测 Linear OOBA 和 Type Confusion OOBA 两类 spatial bug
+python evaluate_mlir.py --bug-type linear_ooba type_confusion_ooba
+
+# 只测 Double-free 这一类 temporal bug
+python evaluate_mlir.py --bug-type double_free
 ```
+
+**`--bug-type` 说明**
+
+- 可指定一个或多个 bug type，只运行匹配的测试样例。
+- 支持的标准名及别名：
+  - `Linear OOBA` / `linear_ooba` / `linearooba` / `linear`
+  - `Non-Linear OOBA` / `non_linear_ooba` / `nonlinearooba` / `nonlinear`
+  - `Type Confusion OOBA` / `type_confusion_ooba` / `typeconfusion` / `typeconfusionooba`
+  - `Misuse-of-free` / `misuse_of_free` / `misuseoffree`
+  - `Double-free` / `double_free` / `doublefree`
+  - `Use-after-*` / `use_after_star` / `useafterstar`
+- 如果指定了不存在的 bug type，脚本会报错并列出所有支持的类型。
 
 
 ## 输出格式

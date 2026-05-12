@@ -10,6 +10,7 @@
 #include <iostream>
 #include <ostream>
 #include <string>
+#include <vector>
 
 #include "misc.h"
 #include "generator/primitives/access_types/read_action.h"
@@ -241,11 +242,11 @@ std::vector<std::string> DirectLocation::generate_at_index(
       "  func.call @use(%val) : (i8) -> ()",
       "}",
     };
-
     if (generate_preconditions_check_distance)
     {
-      // precondition checks are MLIR-style now; integrate if needed
-    };
+      auto preconds = generate_preconditions_check_distance(index);
+      lines.insert(lines.begin(), preconds.begin(), preconds.end());
+    }
   }
   else
   {
@@ -260,6 +261,11 @@ std::vector<std::string> DirectLocation::generate_at_index(
       "  memref.store %c0xFF, %" + access_var_name + "[%idx] : memref<" + size_str + "xi8" + stride_suffix,
       "}",
     };
+    if (generate_preconditions_check_distance)
+    {
+      auto preconds = generate_preconditions_check_distance(index);
+      lines.insert(lines.begin(), preconds.begin(), preconds.end());
+    }
   }
   return lines;
 }
@@ -286,6 +292,12 @@ std::vector<std::string> DirectLocation::generate_using_runtime_index(
       "  func.call @use(%val) : (i8) -> ()",
       "}",
     };
+    //TODO
+    if (!distance.empty() && generate_preconditions_check_distance) 
+    {
+      auto preconds = generate_preconditions_check_distance(distance);
+      lines.insert(lines.begin(), preconds.begin(), preconds.end());
+    }
   }
   else
   {
@@ -298,6 +310,16 @@ std::vector<std::string> DirectLocation::generate_using_runtime_index(
       "  memref.store %c0xFF, %" + access_var_name + "[%" + index + "] : memref<8xi8>",
       "}",
     };
+
+    if (!distance.empty())
+    {
+      // if (generate_preconditions_check_in_range) lines.insert(lines.begin(), "if ( " + generate_preconditions_check_in_range(index, "&" + access_var_name + "[0]", "&" + access_var_name + "[" + distance + "]") + " ) _exit(PRECONDITIONS_FAILED_VALUE);");
+      if (generate_preconditions_check_distance)
+      {
+        auto preconds = generate_preconditions_check_distance(distance);
+        lines.insert(lines.begin(), preconds.begin(), preconds.end());
+      }
+    }//TODO
   }
   return lines;
 }
@@ -359,6 +381,12 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
     split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
     }
     split_access.access_lines.emplace_back("}");
+
+    if (!distance.empty() && generate_preconditions_check_distance)
+    {
+      auto preconds = generate_preconditions_check_distance(distance);
+      split_access.access_lines.insert(split_access.access_lines.begin(), preconds.begin(), preconds.end());
+    } //TODO
   }
   else
   {
@@ -443,6 +471,15 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_aux_ptr(
     if (!appendlines.empty()) split_access.access_lines.emplace_back(appendlines);
     split_access.access_lines.emplace_back("  memref.store %c0xFF, %" + from + "[%" + index_var + "] : memref<8xi8" + stride_suffix);
     split_access.access_lines.emplace_back("}");
+    if (!distance.empty())
+    {
+      // if (generate_preconditions_check_in_range) split_access.access_lines.insert(split_access.access_lines.begin(), "if ( " + generate_preconditions_check_in_range("aux_ptr", from, to) + " ) _exit(PRECONDITIONS_FAILED_VALUE);");
+      if (generate_preconditions_check_distance)
+      {
+        auto preconds = generate_preconditions_check_distance(distance);
+        split_access.access_lines.insert(split_access.access_lines.begin(), preconds.begin(), preconds.end());
+      }
+    }//TODO
   }
   split_access.description = "auxiliary pointer";
   return split_access;
@@ -577,6 +614,7 @@ std::vector<std::string> DirectLocation::generate_big_type(
 ) const
 {
   std::vector<std::string> lines;
+  
   lines.emplace_back("%viewed = memref.view %" + orig_var_name + "[%" + view_offset + "][%" + view_sizes + "] : " + orig_type + " to memref<?xi32>");
   lines.emplace_back("%c0 = arith.constant 0 : index");
   lines.emplace_back("%c1 = arith.constant 1 : index");
@@ -585,6 +623,11 @@ std::vector<std::string> DirectLocation::generate_big_type(
   lines.emplace_back("%distance_div_4 = arith.divsi %" + distance + ", %c4 : index");
   if (is_a<ReadAction>(action))
   {
+    // if (!distance.empty() && generate_preconditions_check_distance)
+    // {
+    //   lines.insert(lines.begin(), "if ( !(" + distance + " < (" + std::to_string(size) + " + 1) ) ) _exit(PRECONDITIONS_FAILED_VALUE);");
+    //   lines.insert(lines.begin(), "if ( !(" + generate_preconditions_check_distance(distance) + ") ) _exit(PRECONDITIONS_FAILED_VALUE);");
+    // }//TODO
     lines.emplace_back("scf.for %i = %c0 to %distance_div_4 step %c1 {");
     lines.emplace_back("  %val = memref.load %viewed[%i] : memref<?xi32>");
     lines.emplace_back("  %val_i8 = arith.trunci %val : i32 to i8");
@@ -599,6 +642,11 @@ std::vector<std::string> DirectLocation::generate_big_type(
   }
   else
   {
+    // if (!distance.empty() && generate_preconditions_check_distance)
+    // {
+    //   lines.insert(lines.begin(), "if ( !(" + distance + " < (" + std::to_string(size) + " + 1) ) ) _exit(PRECONDITIONS_FAILED_VALUE);");
+    //   lines.insert(lines.begin(), "if ( !(" + generate_preconditions_check_distance(distance) + ") ) _exit(PRECONDITIONS_FAILED_VALUE);");
+    // }//TODO
     lines.emplace_back("%c0xFFFFFFFF = arith.constant 4294967295 : i32");
     lines.emplace_back("scf.for %i = %c0 to %distance_div_4 step %c1 {");
     lines.emplace_back("  memref.store %c0xFFFFFFFF, %viewed[%i] : memref<?xi32>");
@@ -632,6 +680,11 @@ std::vector<std::string> DirectLocation::generate_load_widening(
     lines.emplace_back("  %val_i8 = arith.trunci %val : i32 to i8");
     lines.emplace_back("  func.call @use(%val_i8) : (i8) -> ()");
     lines.emplace_back("}");
+    // if (!distance.empty() && generate_preconditions_check_distance)
+    // {
+    //   lines.insert(lines.begin(), "if ( !(" + distance + " < (" + std::to_string(size) + " + 1) ) ) _exit(PRECONDITIONS_FAILED_VALUE);");
+    //   lines.insert(lines.begin(), "if ( !(" + generate_preconditions_check_distance(distance) + ") ) _exit(PRECONDITIONS_FAILED_VALUE);");
+    // }//TODO
   }
   else
   {
@@ -639,6 +692,11 @@ std::vector<std::string> DirectLocation::generate_load_widening(
     lines.emplace_back("scf.for %i = %c0 to %c2 step %c1 {");
     lines.emplace_back("  memref.store %c0xFFFFFFFF, %viewed[%i] : memref<2xi32>");
     lines.emplace_back("}");
+    // if (!distance.empty() && generate_preconditions_check_distance)
+    // {
+    //   lines.insert(lines.begin(), "if ( !(" + distance + " < (" + std::to_string(size) + " + 1) ) ) _exit(PRECONDITIONS_FAILED_VALUE);");
+    //   lines.insert(lines.begin(), "if ( !(" + generate_preconditions_check_distance(distance) + ") ) _exit(PRECONDITIONS_FAILED_VALUE);");
+    // }//TODO
   }
   return lines;
 }

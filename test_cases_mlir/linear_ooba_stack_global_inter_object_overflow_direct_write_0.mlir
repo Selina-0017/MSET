@@ -41,7 +41,10 @@ module {
     %target = memref.get_global @target : memref<8xi8>
     %ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
     %ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-    %distance = arith.subi %ptr_second, %ptr_first : index
+    %diff = arith.subi %ptr_second, %ptr_first : index
+    %minus_diff = arith.subi %c0, %diff : index
+    %is_pos = arith.cmpi sgt, %diff, %c0 : index
+    %distance = arith.select %is_pos, %diff, %minus_diff : index
     %distance_negated = arith.subi %c0, %distance : index
 
     %use_val_target = memref.load %target[%c0] : memref<8xi8>

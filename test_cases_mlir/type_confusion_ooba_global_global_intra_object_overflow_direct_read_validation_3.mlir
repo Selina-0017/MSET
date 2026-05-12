@@ -34,7 +34,7 @@ module {
     %s_target = memref.subview %s[0][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 0>>
     %s_origin = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
     %distance_negated = arith.subi %c0, %distance : index
-    %val = memref.load %s_origin[%idx] : memref<8xi8, strided<[1], offset: 0>>
+    %val = memref.load %s_origin[%idx] : memref<8xi8, strided<[1], offset: 8>>
     func.call @use(%val) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
