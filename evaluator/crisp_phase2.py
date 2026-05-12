@@ -41,6 +41,7 @@ SHARED_LIBS = [
     str(MLIR_LIBDIR / "libmlir_c_runner_utils.so"),
     str(MLIR_LIBDIR / "libmlir_runner_utils.so"),
 ]
+DL = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 
 
 @dataclass
@@ -89,6 +90,7 @@ def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
     passes = []
     passes.extend(
         [
+            f"set-llvm-module-datalayout{{data-layout={DL}}}",
             "func.func(linalg-generalize-named-ops)",
             "func.func(linalg-fuse-elementwise-ops)",
             "convert-shape-to-std",
@@ -171,22 +173,6 @@ def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
         ]
     )
     return f"builtin.module({','.join(passes)})"
-
-
-def _ensure_data_layout(input_path: Path, output_dir: Path) -> Path:
-    """Workaround: inject a default x86_64 data_layout if missing.
-    torch-mlir's ASanToLLVM pass crashes without it."""
-    content = input_path.read_text()
-    if "data_layout" in content:
-        return input_path
-    m = re.search(r'module\s*\{', content)
-    if not m:
-        return input_path
-    dl_attr = 'llvm.data_layout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"'
-    new_content = content[:m.start()] + f'module attributes {{ {dl_attr} }} {{' + content[m.end():]
-    temp_path = output_dir / f"{input_path.stem}_dl.mlir"
-    temp_path.write_text(new_content)
-    return temp_path
 
 
 _HOST_TRIPLE: Optional[str] = None
@@ -275,9 +261,6 @@ def compile_mlir_to_llvm_dialect(
         asan=cfg.asan_enabled,
         crisp=cfg.crisp_enabled,
     )
-    # Workaround for torch-mlir ASanToLLVM missing data_layout
-    if cfg.asan_enabled or cfg.crisp_enabled:
-        input_path = _ensure_data_layout(input_path, output_path.parent)
     cmd = [
         str(MLIR_OPT),
         str(input_path),
