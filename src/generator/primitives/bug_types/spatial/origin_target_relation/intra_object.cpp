@@ -73,7 +73,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > IntraObject::generate(
     region_canvas, target_size, origin_size, "s_target", "s_origin",
     "distance", "distance_negated", true, false, static_dist
   );
-  variant->set_lifetime_pos(region_canvas->get_lifetime_pos());
+  variant->set_lifetime_pos( region_canvas->get_lifetime_pos() );
   variant->add_variant_description_line("target declared before origin");
   variants.push_back(variant);
 

@@ -49,22 +49,22 @@ module {
     func.call @use(%use_val_s_target) : (i8) -> ()
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 8>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
-    %read_value_68 = memref.alloca() : memref<1024xi8>
+    %read_value_78 = memref.alloca() : memref<1024xi8>
     %negadist_variant = arith.subi %c0, %distance_negated : index
     scf.for %i = %c0 to %negadist_variant step %c1024 {
       %remaining = arith.subi %negadist_variant, %i : index
       %is_full = arith.cmpi sgt, %remaining, %c1024 : index
       %step = arith.select %is_full, %c1024, %remaining : index
       %src_slice = memref.subview %s_origin[%i][%step][1] : memref<8xi8, strided<[1], offset: 8>> to memref<?xi8, strided<[1], offset: ?>>
-      %dst_slice = memref.subview %read_value_68[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
+      %dst_slice = memref.subview %read_value_78[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
       memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>
     }
-    %use_val_read_value_68 = memref.load %read_value_68[%c0] : memref<1024xi8>
-    func.call @use(%use_val_read_value_68) : (i8) -> ()
-    %read_value_70 = memref.alloca() : memref<8xi8>
-    memref.copy %s_origin, %read_value_70 : memref<8xi8, strided<[1], offset: 8>> to memref<8xi8>
-    %use_val_read_value_70 = memref.load %read_value_70[%c0] : memref<8xi8>
-    func.call @use(%use_val_read_value_70) : (i8) -> ()
+    %use_val_read_value_78 = memref.load %read_value_78[%c0] : memref<1024xi8>
+    func.call @use(%use_val_read_value_78) : (i8) -> ()
+    %read_value_80 = memref.alloca() : memref<8xi8>
+    memref.copy %s_origin, %read_value_80 : memref<8xi8, strided<[1], offset: 8>> to memref<8xi8>
+    %use_val_read_value_80 = memref.load %read_value_80[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_80) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

@@ -68,7 +68,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate(
 
     // manual i32 assembly variant (replaces reinterpret_cast)
     std::shared_ptr<OriginTargetCodeCanvas> variant_manual_i32 = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
-    bool needs_strided = !is_a<NonObject>(origin_target_relation);
+    bool needs_strided = is_a<IntraObject>(origin_target_relation);
     std::string origin_name = variant_manual_i32->get_origin_name();
     std::string dist = variant_manual_i32->get_distance();
     std::string origin_offset = "0";
@@ -139,10 +139,10 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate_val
     if ( origin_target_canvas->get_forces_underflow() ) continue; // skip underflows
 
     ssize_t static_dist = origin_target_canvas->get_distance_static_value();
-    if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
-    if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
+    // if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
+    // if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
 
-    bool needs_strided = !is_a<NonObject>(origin_target_relation);
+    bool needs_strided = is_a<IntraObject>(origin_target_relation);
 
     // big type variant
     std::shared_ptr<OriginTargetCodeCanvas> variant_with_big_type = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);

@@ -26,6 +26,7 @@ module {
     %c0_i32 = arith.constant 0 : i32
     // locals
 
+    %target = memref.alloc() : memref<8xi8>
 
     %tmp = memref.alloc() : memref<8xi8>
     %tmp2 = memref.alloc() : memref<8xi8>
@@ -38,7 +39,6 @@ module {
     func.call @use(%use_val_tmp2) : (i8) -> ()
     %use_val_tmp3 = memref.load %tmp3[%c0] : memref<8xi8>
     func.call @use(%use_val_tmp3) : (i8) -> ()
-    %target = memref.alloc() : memref<8xi8>
     
   scf.for %i = %c0 to %c8 step %c1 {
     %val = memref.load %pointer_to_use[%i] : memref<8xi8>

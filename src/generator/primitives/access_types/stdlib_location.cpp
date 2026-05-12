@@ -324,7 +324,8 @@ std::vector<std::string> StdlibLocation::generate_at_index(
   std::vector<std::string> lines;
   std::string size_str = std::to_string(size);
   std::string src_type = needs_strided ? "memref<" + size_str + "xi8, strided<[1], offset: " + offset + ">>" : "memref<" + size_str + "xi8>";
-  std::string dst_type = needs_strided ? "memref<" + size_str + "xi8, strided<[1], offset: ?>>" : "memref<" + size_str + "xi8>";
+  std::string dst_type = "memref<" + size_str + "xi8, strided<[1], offset: ?>>";
+  // std::string dst_type = needs_strided ? "memref<" + size_str + "xi8, strided<[1], offset: ?>>" : "memref<" + size_str + "xi8>";
   if (is_a<ReadAction>(action))
   {
     // READ: memref.copy via subview

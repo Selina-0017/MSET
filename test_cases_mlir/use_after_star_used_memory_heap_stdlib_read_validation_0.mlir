@@ -14,18 +14,16 @@ module {
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
+    %c0_v = arith.constant 0 : index
+    %c8_v = arith.constant 8 : index
+  %c0 = arith.constant 0 : index
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-  %c0_v = arith.constant 0 : index
-  %c8_v = arith.constant 8 : index
-  %c0 = arith.constant 0 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
     %target = memref.alloc() : memref<8xi8>
-    
-  %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
+    %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
     %reallocated = memref.alloc() : memref<8xi8>
 
   %read_value_41 = memref.alloca() : memref<8xi8>
@@ -33,6 +31,8 @@ module {
   %use_val_read_value_41 = memref.load %read_value_41[%c0] : memref<8xi8>
   func.call @use(%use_val_read_value_41) : (i8) -> ()
   func.call @exit(%test_success) : (i32) -> ()
+
+    
 
     memref.dealloc %target : memref<8xi8>
     memref.dealloc %reallocated : memref<8xi8>

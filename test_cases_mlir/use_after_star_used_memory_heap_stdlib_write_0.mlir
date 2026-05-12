@@ -14,24 +14,20 @@ module {
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
-    %precond_fail = arith.constant 43 : i32
-    %test_success = arith.constant 42 : i32
-  %c0_v = arith.constant 0 : index
-  %c8_v = arith.constant 8 : index
+    %c0_v = arith.constant 0 : index
+    %c8_v = arith.constant 8 : index
   %ctrue = arith.constant 1 : i1
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
   %c8 = arith.constant 8 : index
   %c0xFF = arith.constant 255 : i8
+    %precond_fail = arith.constant 43 : i32
+    %test_success = arith.constant 42 : i32
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
     %target = memref.alloc() : memref<8xi8>
-    
-  %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
-
-    memref.dealloc %target : memref<8xi8>
+    %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
     %reallocated = memref.alloc() : memref<8xi8>
 
   %target_ptr = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
@@ -45,6 +41,10 @@ module {
     memref.store %c0xFF, %view_target[%i] : memref<?xi8>
   }
   func.call @exit(%test_success) : (i32) -> ()
+
+    
+
+    memref.dealloc %target : memref<8xi8>
     memref.dealloc %reallocated : memref<8xi8>
     return %c0_i32 : i32
   }

@@ -20,10 +20,8 @@ std::shared_ptr<RegionCodeCanvas> HeapRegion::generate(CodeCanvas::code_pos_t wh
 {
   std::shared_ptr<RegionCodeCanvas> populated_code_canvas = std::make_shared<RegionCodeCanvas>(*canvas, size);
 
-  where = populated_code_canvas->add_at(
-    where,
-    "%" + name + " = memref.alloc() : memref<" + std::to_string(size) + "xi8>",
-    "    "
+  where = populated_code_canvas->add_local(
+    "%" + name + " = memref.alloc() : memref<" + std::to_string(size) + "xi8>"
   );
   CodeCanvas::code_pos_t allocation_pos = where;
 
@@ -49,7 +47,7 @@ std::shared_ptr<RegionCodeCanvas> HeapRegion::generate(std::shared_ptr<CodeCanva
 {
   std::shared_ptr<RegionCodeCanvas> populated_code_canvas = std::make_shared<RegionCodeCanvas>(*canvas, size);
 
-  CodeCanvas::code_pos_t allocation_pos = populated_code_canvas->add_to_f_body(
+  CodeCanvas::code_pos_t allocation_pos = populated_code_canvas->add_local(
     "%" + name + " = memref.alloc() : memref<" + std::to_string(size) + "xi8>"
   );
 

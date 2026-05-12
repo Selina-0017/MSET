@@ -23,36 +23,36 @@ module {
   memref.global @origin : memref<8xi8> = dense<170>
 
   func.func @f() -> i32 {
+    %c0 = arith.constant 0 : index
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-    %c0 = arith.constant 0 : index
     %distance = arith.constant 9 : index
     %c1 = arith.constant 1 : index
     %c1024 = arith.constant 1024 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
     %origin = memref.get_global @origin : memref<8xi8>
+
     %distance_negated = arith.subi %c0, %distance : index
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
     func.call @use(%use_val_origin) : (i8) -> ()
-    %read_value_220 = memref.alloca() : memref<1024xi8>
+    %read_value_310 = memref.alloca() : memref<1024xi8>
     %negadist_variant = arith.subi %c0, %distance_negated : index
     scf.for %i = %c0 to %negadist_variant step %c1024 {
       %remaining = arith.subi %negadist_variant, %i : index
       %is_full = arith.cmpi sgt, %remaining, %c1024 : index
       %step = arith.select %is_full, %c1024, %remaining : index
       %src_slice = memref.subview %origin[%i][%step][1] : memref<8xi8> to memref<?xi8, strided<[1], offset: ?>>
-      %dst_slice = memref.subview %read_value_220[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
+      %dst_slice = memref.subview %read_value_310[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
       memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>
     }
-    %use_val_read_value_220 = memref.load %read_value_220[%c0] : memref<1024xi8>
-    func.call @use(%use_val_read_value_220) : (i8) -> ()
-    %read_value_222 = memref.alloca() : memref<8xi8>
-    memref.copy %origin, %read_value_222 : memref<8xi8> to memref<8xi8>
-    %use_val_read_value_222 = memref.load %read_value_222[%c0] : memref<8xi8>
-    func.call @use(%use_val_read_value_222) : (i8) -> ()
+    %use_val_read_value_310 = memref.load %read_value_310[%c0] : memref<1024xi8>
+    func.call @use(%use_val_read_value_310) : (i8) -> ()
+    %read_value_312 = memref.alloca() : memref<8xi8>
+    memref.copy %origin, %read_value_312 : memref<8xi8> to memref<8xi8>
+    %use_val_read_value_312 = memref.load %read_value_312[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_312) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

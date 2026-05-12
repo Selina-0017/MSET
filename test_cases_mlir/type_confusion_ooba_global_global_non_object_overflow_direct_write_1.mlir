@@ -21,9 +21,9 @@ module {
   memref.global @origin : memref<8xi8> = dense<170>
 
   func.func @f() -> i32 {
+    %c0 = arith.constant 0 : index
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-    %c0 = arith.constant 0 : index
     %distance = arith.constant 9 : index
     %c1 = arith.constant 1 : index
     %c2 = arith.constant 2 : index
@@ -32,8 +32,8 @@ module {
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
     %origin = memref.get_global @origin : memref<8xi8>
+
     %distance_negated = arith.subi %c0, %distance : index
     %viewed = memref.view %origin[%c4][] : memref<8xi8> to memref<2xi32>
     scf.for %i = %c0 to %c2 step %c1 {

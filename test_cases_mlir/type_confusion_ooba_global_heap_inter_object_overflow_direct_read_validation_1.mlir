@@ -18,26 +18,34 @@ module {
 
   func.func @use(%arg0: i8) -> () { func.return }
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<548xi8> = dense<170>
+  memref.global @origin : memref<8xi8> = dense<170>
 
   func.func @f() -> i32 {
+    %c0 = arith.constant 0 : index
+    %c1 = arith.constant 1 : index
+    %c8 = arith.constant 8 : index
+    %c0xAA = arith.constant 170 : i8
+    %idx = arith.constant 7 : index
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-    %c0 = arith.constant 0 : index
-    %distance = arith.constant 540 : index
-    %idx = arith.constant 7 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
-    %parent = memref.get_global @parent : memref<548xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<548xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[540][8][1] : memref<548xi8> to memref<8xi8, strided<[1], offset: 540>>
+    %origin = memref.get_global @origin : memref<8xi8>
+    %target = memref.alloc() : memref<8xi8>
+    scf.for %i = %c0 to %c8 step %c1 {
+      memref.store %c0xAA, %target[%i] : memref<8xi8>
+    }
+    %ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
+    %ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
+    %distance = arith.subi %ptr_second, %ptr_first : index
     %distance_negated = arith.subi %c0, %distance : index
-    %val = memref.load %parent_origin[%idx] : memref<8xi8, strided<[1], offset: 0>>
+    %val = memref.load %origin[%idx] : memref<8xi8>
     func.call @use(%val) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
+
+    memref.dealloc %target : memref<8xi8>
     return %c0_i32 : i32
   }
 

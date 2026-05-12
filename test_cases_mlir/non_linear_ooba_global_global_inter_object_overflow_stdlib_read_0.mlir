@@ -17,26 +17,28 @@ module {
 
   func.func @use(%arg0: i8) -> () { func.return }
   func.func private @exit(%arg0: i32) -> ()
-  memref.global @parent : memref<485xi8> = dense<170>
+  memref.global @origin : memref<8xi8> = dense<170>
+  memref.global @target : memref<8xi8> = dense<170>
 
   func.func @f() -> i32 {
+    %c0 = arith.constant 0 : index
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-    %c0 = arith.constant 0 : index
-    %distance = arith.constant 477 : index
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
-    %parent = memref.get_global @parent : memref<485xi8>
-    %parent_origin = memref.subview %parent[0][8][1] : memref<485xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[477][8][1] : memref<485xi8> to memref<8xi8, strided<[1], offset: 477>>
+    %origin = memref.get_global @origin : memref<8xi8>
+    %target = memref.get_global @target : memref<8xi8>
+    %ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
+    %ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
+    %distance = arith.subi %ptr_second, %ptr_first : index
     %distance_negated = arith.subi %c0, %distance : index
-    %read_value_250 = memref.alloca() : memref<8xi8>
-    %src_slice = memref.subview %parent_origin[%distance][8][1] : memref<8xi8, strided<[1], offset: 0>> to memref<8xi8, strided<[1], offset: ?>>
-    memref.copy %src_slice, %read_value_250 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>
-    %use_val_read_value_250 = memref.load %read_value_250[%c0] : memref<8xi8>
-    func.call @use(%use_val_read_value_250) : (i8) -> ()
+
+    %read_value_356 = memref.alloca() : memref<8xi8>
+    %src_slice = memref.subview %origin[%distance][8][1] : memref<8xi8> to memref<8xi8, strided<[1], offset: ?>>
+    memref.copy %src_slice, %read_value_356 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>
+    %use_val_read_value_356 = memref.load %read_value_356[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_356) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

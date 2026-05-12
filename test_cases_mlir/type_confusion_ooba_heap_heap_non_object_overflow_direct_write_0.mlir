@@ -20,12 +20,12 @@ module {
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
-    %precond_fail = arith.constant 43 : i32
-    %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
+    %precond_fail = arith.constant 43 : i32
+    %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
     %c2 = arith.constant 2 : index
     %c4 = arith.constant 4 : index
@@ -33,11 +33,11 @@ module {
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
     %origin = memref.alloc() : memref<8xi8>
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
+
     %distance_negated = arith.subi %c0, %distance : index
     %viewed = memref.view %origin[%c0][%c2] : memref<8xi8> to memref<?xi32>
     %distance_div_4 = arith.divsi %distance, %c4 : index

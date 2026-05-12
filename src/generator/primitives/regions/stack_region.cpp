@@ -27,7 +27,7 @@ std::shared_ptr<RegionCodeCanvas> StackRegion::generate(std::shared_ptr<CodeCanv
     current = _generate_init_loop(populated_code_canvas, current, name, size, "0xAA", "    ");
   }
   populated_code_canvas->set_allocation_pos(allocation_pos - 1);
-  populated_code_canvas->set_deallocation_pos(CodeCanvas::INVALID_CODE_POS);
+  populated_code_canvas->set_deallocation_pos(populated_code_canvas->get_f_call_pos() + 1);
   populated_code_canvas->set_lifetime_pos(current);
 
   return populated_code_canvas;
@@ -51,7 +51,7 @@ std::shared_ptr<RegionCodeCanvas> StackRegion::generate_in_other_f(std::shared_p
     current = _generate_init_loop(populated_code_canvas, current, name, size, "0xAA", "    ");
   }
   populated_code_canvas->set_allocation_pos(allocation_pos - 1);
-  populated_code_canvas->set_deallocation_pos(CodeCanvas::INVALID_CODE_POS);
+  populated_code_canvas->set_deallocation_pos(populated_code_canvas->get_other_f_call_pos() + 1);
   populated_code_canvas->set_lifetime_pos(current);
 
   return populated_code_canvas;
@@ -71,7 +71,7 @@ std::shared_ptr<RegionCodeCanvas> StackRegion::generate_array(std::shared_ptr<Co
     current = _generate_2d_init_loop(populated_code_canvas, current, name, size, array_size, "0xAA", "    ");
   }
   populated_code_canvas->set_allocation_pos(allocation_pos - 1);
-  populated_code_canvas->set_deallocation_pos(CodeCanvas::INVALID_CODE_POS);
+  populated_code_canvas->set_deallocation_pos(populated_code_canvas->get_other_f_call_pos() + 1);
   populated_code_canvas->set_lifetime_pos(current);
 
   return populated_code_canvas;
@@ -110,7 +110,7 @@ std::shared_ptr<RegionCodeCanvas> StackRegion::generate(
     current = _generate_init_loop(populated_code_canvas, current, name + "_" + name_field_2, size_field_2, "0xBB", "    ", true, std::to_string(size_field_1 + gap));
   }
   populated_code_canvas->set_allocation_pos(allocation_pos - 1);
-  populated_code_canvas->set_deallocation_pos(CodeCanvas::INVALID_CODE_POS);
+  populated_code_canvas->set_deallocation_pos(populated_code_canvas->get_f_call_pos() + 1);
   populated_code_canvas->set_lifetime_pos(current);
 
   return populated_code_canvas;

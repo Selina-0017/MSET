@@ -21,9 +21,9 @@ module {
   memref.global @target : memref<160xi8> = dense<0>
 
   func.func @f() -> i32 {
+    %c0 = arith.constant 0 : index
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-    %c0 = arith.constant 0 : index
     %c8_mof = arith.constant 8 : index
     %c104_mof = arith.constant 104 : index
     %c_magic = arith.constant 96 : i8
@@ -33,8 +33,8 @@ module {
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
     %target = memref.get_global @target : memref<160xi8>
+
     memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value
     memref.store %c0x40, %target[%c104_mof] : memref<160xi8>
     %crafted = memref.view %target[%c104_mof][%c8_mof] : memref<160xi8> to memref<?xi8>

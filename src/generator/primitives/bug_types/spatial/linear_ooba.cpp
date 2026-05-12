@@ -71,12 +71,6 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
     // ssize_t static_dist = origin_target_canvas->get_distance_static_value();
     // if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
     // if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
-
-    // std::vector< std::tuple< std::string, std::string > > distance_variants;
-    // if ( flow->accepts_static_distance(static_dist) )
-    //   distance_variants.push_back({ origin_target_canvas->get_distance(), "distance is checked as is" });
-    // if ( origin_target_canvas->get_distance_negated() != "N/A" && flow->accepts_static_distance(-static_dist) )
-    //   distance_variants.push_back({ origin_target_canvas->get_distance_negated(), "distance is negated before checking" });
     std::vector< std::tuple< std::string, std::string > > distance_variants = {
       std::tuple< std::string, std::string >{ origin_target_canvas->get_distance(), "distance is checked as is" },
       std::tuple< std::string, std::string >{ origin_target_canvas->get_distance_negated(), "distance is negated before checking" }
@@ -105,7 +99,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
       std::vector<AccessLocation::SplitAccess> reach_target_codes;
       if (!distance_statically_known)
       {
-          bool needs_strided = !is_a<NonObject>(origin_target_relation);
+          bool needs_strided = is_a<IntraObject>(origin_target_relation);
           reach_target_codes = access_location->generate_bulk_split_all(
               access_action, origin_target_canvas_copy->get_origin_name(), origin_target_canvas_copy->get_target_name(), distance,
               generate_preconditions_check_distance, generate_preconditions_check_in_range, generate_counter_update, needs_strided, origin_offset
@@ -119,7 +113,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
         {
           // special case for when there is no space in between the origin and the target
           origin_target_canvas_copy->add_variant_description_line("no space in between origin and target");
-          bool needs_strided = !is_a<NonObject>(origin_target_relation);
+          bool needs_strided = is_a<IntraObject>(origin_target_relation);
           std::vector<AccessLocation::SplitAccess> access_target_codes = access_location->generate_split_all(
             access_action,
             origin_target_canvas_copy->get_target_name(),
@@ -138,7 +132,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
           }
           continue;
         }        
-          bool needs_strided = !is_a<NonObject>(origin_target_relation);
+          bool needs_strided = is_a<IntraObject>(origin_target_relation);
           reach_target_codes = access_location->generate_bulk_split_all(
             access_action,origin_target_canvas_copy->get_origin_name(), origin_target_canvas_copy->get_target_name(), distance,
             generate_preconditions_check_distance, generate_preconditions_check_in_range, generate_counter_update, needs_strided, origin_offset
@@ -150,7 +144,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
       for ( auto &reach_target_code : reach_target_codes )
       {
         if ( reach_target_code.description != "index" ) continue;
-        bool needs_strided = !is_a<NonObject>(origin_target_relation);
+        bool needs_strided = is_a<IntraObject>(origin_target_relation);
         std::vector<AccessLocation::SplitAccess> access_target_codes = access_location->generate_split_all(
           access_action,
           reach_target_code.result,
@@ -261,7 +255,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
       )
       {
         // special case for when there is no space in between the origin and the target.
-        bool needs_strided = !is_a<NonObject>(origin_target_relation);
+        bool needs_strided = is_a<IntraObject>(origin_target_relation);
         std::vector<std::string> access_target_code = access_location->generate(
           access_action,
           var_name_to_access,
@@ -277,7 +271,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate_valida
       }
       else
       {
-        bool needs_strided = !is_a<NonObject>(origin_target_relation);
+        bool needs_strided = is_a<IntraObject>(origin_target_relation);
         AccessLocation::SplitAccess reach_target_code;
         reach_target_code = access_location->generate_bulk_split_using_index(
           access_action, var_name_to_access, var_name_to_access, distance_variant,

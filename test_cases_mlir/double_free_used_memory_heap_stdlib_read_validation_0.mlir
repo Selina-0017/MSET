@@ -24,11 +24,11 @@ module {
     %c0_i32 = arith.constant 0 : i32
     // locals
 
+    %target = memref.alloc() : memref<8xi8>
 
     %pointer_to_double_free = memref.alloc() : memref<10xi8> // pointer to be double-freed
     memref.dealloc %pointer_to_double_free : memref<10xi8>
     %pointer_to_use = memref.alloc() : memref<8xi8> // allocate a new object
-    %target = memref.alloc() : memref<8xi8>
     
   %read_value_2 = memref.alloca() : memref<8xi8>
   memref.copy %pointer_to_use, %read_value_2 : memref<8xi8> to memref<8xi8>

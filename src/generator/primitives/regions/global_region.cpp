@@ -30,10 +30,10 @@ std::shared_ptr<RegionCodeCanvas> GlobalRegion::generate(std::shared_ptr<CodeCan
   auto it = populated_code_canvas->add_global(definition);
   
   // In function body, get_global to use it
-  populated_code_canvas->add_to_f_body(
+  populated_code_canvas->add_local(
     "%c0 = arith.constant 0 : index"
   );
-  populated_code_canvas->add_to_f_body(
+  populated_code_canvas->add_local(
     "%" + name + " = memref.get_global @" + name + " : memref<" + std::to_string(size) + "xi8>"
   );
   
@@ -88,6 +88,6 @@ std::shared_ptr<RegionCodeCanvas> GlobalRegion::generate(
   
   populated_code_canvas->set_allocation_pos(it);
   populated_code_canvas->set_deallocation_pos(CodeCanvas::INVALID_CODE_POS);
-  populated_code_canvas->set_lifetime_pos(current);
+  populated_code_canvas->set_lifetime_pos(populated_code_canvas->get_current_pos_in_f());
   return populated_code_canvas;
 }

@@ -154,7 +154,7 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
 
   assert ( is_a<HeapRegion>(memory_region) );
 
-  region_canvas->add_during_lifetime({
+  region_canvas->add_locals({
     "%c0_v = arith.constant 0 : index",
     "%c8_v = arith.constant 8 : index",
     "%view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>"
@@ -587,7 +587,7 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
 
   assert ( is_a<HeapRegion>(memory_region) );
 
-  region_canvas->add_during_lifetime({
+  region_canvas->add_locals({
     "%c0_v = arith.constant 0 : index",
     "%c8_v = arith.constant 8 : index",
     "%view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>"

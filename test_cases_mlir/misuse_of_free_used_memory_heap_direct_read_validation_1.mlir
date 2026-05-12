@@ -31,8 +31,8 @@ module {
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-
     %target = memref.alloc() : memref<160xi8>
+
     
     memref.store %c_magic, %target[%c8_mof] : memref<160xi8> // magic value
     memref.store %c0x40, %target[%c104_mof] : memref<160xi8>

@@ -65,7 +65,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> NonLinearOOBA::generate(
     auto origin_target_canvas_copy = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
     ssize_t static_dist = origin_target_canvas->get_distance_static_value();
     std::string origin_offset = static_dist > 0 ? "0" : std::to_string(std::abs(static_dist));
-    bool needs_strided = !is_a<NonObject>(origin_target_relation);
+    bool needs_strided = is_a<IntraObject>(origin_target_relation);
     std::vector<std::string> access_target_code = access_location->generate_at_index(
       access_action,
       origin_target_canvas_copy->get_origin_name(),
@@ -131,7 +131,7 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> NonLinearOOBA::generate_val
     {
       var_name_to_access = origin_target_canvas_copy->get_origin_name();
     }
-    bool needs_strided = !is_a<NonObject>(origin_target_relation);
+    bool needs_strided = is_a<IntraObject>(origin_target_relation);
     std::vector<std::string> access_target_code = access_location->generate_at_index(
       access_action,
       var_name_to_access,

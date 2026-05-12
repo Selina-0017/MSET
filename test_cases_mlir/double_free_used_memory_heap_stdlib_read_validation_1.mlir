@@ -24,6 +24,7 @@ module {
     %c0_i32 = arith.constant 0 : i32
     // locals
 
+    %target = memref.alloc() : memref<8xi8>
 
     %tmp = memref.alloc() : memref<8xi8>
     %tmp2 = memref.alloc() : memref<8xi8>
@@ -36,7 +37,6 @@ module {
     func.call @use(%use_val_tmp2) : (i8) -> ()
     %use_val_tmp3 = memref.load %tmp3[%c0] : memref<8xi8>
     func.call @use(%use_val_tmp3) : (i8) -> ()
-    %target = memref.alloc() : memref<8xi8>
     
   %read_value_3 = memref.alloca() : memref<8xi8>
   memref.copy %pointer_to_use, %read_value_3 : memref<8xi8> to memref<8xi8>

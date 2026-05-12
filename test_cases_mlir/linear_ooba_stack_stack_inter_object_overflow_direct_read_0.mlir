@@ -22,42 +22,45 @@ module {
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
-    %precond_fail = arith.constant 43 : i32
-    %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
-    %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 447 : index
+      %__base = arith.constant 1 : index
+    %precond_fail = arith.constant 43 : i32
+    %test_success = arith.constant 42 : i32
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-    %parent = memref.alloca() : memref<455xi8>
-
-    %parent_origin = memref.subview %parent[0][8][1] : memref<455xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[447][8][1] : memref<455xi8> to memref<8xi8, strided<[1], offset: 447>>
+    %origin = memref.alloca() : memref<8xi8>
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xAA, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
+      memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
+    %target = memref.alloca() : memref<8xi8>
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 447>>
+      memref.store %c0xAA, %target[%i] : memref<8xi8>
     }
+    %ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
+    %ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
+    %distance = arith.subi %ptr_second, %ptr_first : index
     %distance_negated = arith.subi %c0, %distance : index
-    %use_val_parent_target = memref.load %parent_target[%c0] : memref<8xi8, strided<[1], offset: 447>>
-    func.call @use(%use_val_parent_target) : (i8) -> ()
-    %use_val_parent_origin = memref.load %parent_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
-    func.call @use(%use_val_parent_origin) : (i8) -> ()
+    %use_val_target = memref.load %target[%c0] : memref<8xi8>
+    func.call @use(%use_val_target) : (i8) -> ()
+    %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
+    func.call @use(%use_val_origin) : (i8) -> ()
     
     scf.for %reach_index = %c0 to %distance step %c1 {
-      %val = memref.load %parent_origin[%reach_index] : memref<8xi8, strided<[1], offset: 0>>
+      %__idx = arith.addi %reach_index, %__base : index
+      %val = memref.load %origin[%__idx] : memref<8xi8>
       func.call @use(%val) : (i8) -> ()
     }
     scf.for %i = %c0 to %c8 step %c1 {
-      %val = memref.load %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
+      %__idx = arith.addi %i, %__base : index
+      %val = memref.load %origin[%__idx] : memref<8xi8>
       func.call @use(%val) : (i8) -> ()
     }
     func.call @exit(%test_success) : (i32) -> ()
+
 
     return %c0_i32 : i32
   }

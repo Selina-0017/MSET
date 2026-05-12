@@ -32,11 +32,11 @@ module {
     %s_target = memref.subview %s[0][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 0>>
     %s_origin = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
     %distance_negated = arith.subi %c0, %distance : index
-    %read_value_253 = memref.alloca() : memref<8xi8>
+    %read_value_361 = memref.alloca() : memref<8xi8>
     %src_slice = memref.subview %s_origin[%distance][8][1] : memref<8xi8, strided<[1], offset: 8>> to memref<8xi8, strided<[1], offset: ?>>
-    memref.copy %src_slice, %read_value_253 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>
-    %use_val_read_value_253 = memref.load %read_value_253[%c0] : memref<8xi8>
-    func.call @use(%use_val_read_value_253) : (i8) -> ()
+    memref.copy %src_slice, %read_value_361 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>
+    %use_val_read_value_361 = memref.load %read_value_361[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_361) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32

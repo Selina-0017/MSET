@@ -19,35 +19,36 @@ module {
   func.func private @exit(%arg0: i32) -> ()
 
   func.func @f() -> i32 {
-    %precond_fail = arith.constant 43 : i32
-    %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
-    %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 689 : index
+    %precond_fail = arith.constant 43 : i32
+    %test_success = arith.constant 42 : i32
     %c0_i32 = arith.constant 0 : i32
     // locals
 
-    %parent = memref.alloca() : memref<697xi8>
-
-    %parent_origin = memref.subview %parent[0][8][1] : memref<697xi8> to memref<8xi8, strided<[1], offset: 0>>
-    %parent_target = memref.subview %parent[689][8][1] : memref<697xi8> to memref<8xi8, strided<[1], offset: 689>>
+    %origin = memref.alloca() : memref<8xi8>
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xAA, %parent_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
+      memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
+    %target = memref.alloc() : memref<8xi8>
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xBB, %parent_target[%i] : memref<8xi8, strided<[1], offset: 689>>
+      memref.store %c0xAA, %target[%i] : memref<8xi8>
     }
+    %ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
+    %ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
+    %distance = arith.subi %ptr_second, %ptr_first : index
     %distance_negated = arith.subi %c0, %distance : index
-    %read_value_233 = memref.alloca() : memref<8xi8>
-    %src_slice = memref.subview %parent_target[%c0][8][1] : memref<8xi8, strided<[1], offset: 689>> to memref<8xi8, strided<[1], offset: ?>>
-    memref.copy %src_slice, %read_value_233 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>
-    %use_val_read_value_233 = memref.load %read_value_233[%c0] : memref<8xi8>
-    func.call @use(%use_val_read_value_233) : (i8) -> ()
+    %read_value_326 = memref.alloca() : memref<8xi8>
+    %src_slice = memref.subview %target[%c0][8][1] : memref<8xi8> to memref<8xi8, strided<[1], offset: ?>>
+    memref.copy %src_slice, %read_value_326 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>
+    %use_val_read_value_326 = memref.load %read_value_326[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_326) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
+
+    memref.dealloc %target : memref<8xi8>
     return %c0_i32 : i32
   }
 

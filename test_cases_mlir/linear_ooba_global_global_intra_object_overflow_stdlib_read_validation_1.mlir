@@ -39,22 +39,22 @@ module {
     func.call @use(%use_val_s_target) : (i8) -> ()
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 8>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
-    %read_value_214 = memref.alloca() : memref<1024xi8>
+    %read_value_304 = memref.alloca() : memref<1024xi8>
     
     scf.for %i = %c0 to %c0 step %c1024 {
       %remaining = arith.subi %c0, %i : index
       %is_full = arith.cmpi sgt, %remaining, %c1024 : index
       %step = arith.select %is_full, %c1024, %remaining : index
       %src_slice = memref.subview %s_target[%i][%step][1] : memref<8xi8, strided<[1], offset: 0>> to memref<?xi8, strided<[1], offset: ?>>
-      %dst_slice = memref.subview %read_value_214[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
+      %dst_slice = memref.subview %read_value_304[%c0][%step][1] : memref<1024xi8> to memref<?xi8, strided<[1], offset: ?>>
       memref.copy %src_slice, %dst_slice : memref<?xi8, strided<[1], offset: ?>> to memref<?xi8, strided<[1], offset: ?>>
     }
-    %use_val_read_value_214 = memref.load %read_value_214[%c0] : memref<1024xi8>
-    func.call @use(%use_val_read_value_214) : (i8) -> ()
-    %read_value_215 = memref.alloca() : memref<8xi8>
-    memref.copy %s_target, %read_value_215 : memref<8xi8, strided<[1], offset: 0>> to memref<8xi8>
-    %use_val_read_value_215 = memref.load %read_value_215[%c0] : memref<8xi8>
-    func.call @use(%use_val_read_value_215) : (i8) -> ()
+    %use_val_read_value_304 = memref.load %read_value_304[%c0] : memref<1024xi8>
+    func.call @use(%use_val_read_value_304) : (i8) -> ()
+    %read_value_305 = memref.alloca() : memref<8xi8>
+    memref.copy %s_target, %read_value_305 : memref<8xi8, strided<[1], offset: 0>> to memref<8xi8>
+    %use_val_read_value_305 = memref.load %read_value_305[%c0] : memref<8xi8>
+    func.call @use(%use_val_read_value_305) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()
 
     return %c0_i32 : i32
