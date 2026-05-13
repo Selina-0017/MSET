@@ -19,7 +19,7 @@ module {
     %c8_v = arith.constant 8 : index
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
-  %c_max = arith.constant 1000000000 : index
+  %c_max = arith.constant 1000000 : index
   %ctrue_loop = arith.constant 1 : i1
       %c8 = arith.constant 8 : index
       %c0xAA = arith.constant 170 : i8

@@ -17,7 +17,7 @@
 #include "generator/primitives/regions/heap_region.h"
 #include "generator/primitives/regions/stack_region.h"
 
-const std::string max_reallocated_retries = "1000000000";
+const std::string max_reallocated_retries = "1000000";
 const std::string max_reallocated_retries_validation = "100";
 
 UseAfterStar::UseAfterStar():

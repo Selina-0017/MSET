@@ -79,7 +79,7 @@ module {
   %precond_fail = arith.constant 43 : i32
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
-  %c_max = arith.constant 1000000000 : index
+  %c_max = arith.constant 1000000 : index
   %ctrue = arith.constant 1 : i1
       %cfalse = arith.constant 0 : i1
     %ret = func.call @f() : () -> memref<8xi8>
