@@ -43,6 +43,12 @@ module {
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 8>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
     
+    %is_valid = arith.cmpi sle, %distance, %c0 : index
+    scf.if %is_valid {
+      func.call @exit(%precond_fail) : (i32) -> ()
+      scf.yield
+    }
+    
     scf.for %reach_index = %c0 to %distance step %c1 {
       memref.store %c0xFF, %s_origin[%reach_index] : memref<8xi8, strided<[1], offset: 8>>
     }

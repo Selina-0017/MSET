@@ -34,12 +34,9 @@ module {
 
     %target = memref.get_global @target : memref<8xi8>
     %origin = memref.get_global @origin : memref<8xi8>
-    %ptr_first = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-    %ptr_second = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
-    %diff = arith.subi %ptr_second, %ptr_first : index
-    %minus_diff = arith.subi %c0, %diff : index
-    %is_pos = arith.cmpi sgt, %diff, %c0 : index
-    %distance = arith.select %is_pos, %diff, %minus_diff : index
+    %ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
+    %ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
+    %distance = arith.subi %ptr_target, %ptr_origin : index
     %distance_negated = arith.subi %c0, %distance : index
 
     %use_val_target = memref.load %target[%c0] : memref<8xi8>
@@ -47,14 +44,15 @@ module {
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
     func.call @use(%use_val_origin) : (i8) -> ()
     %read_value_278 = memref.alloca() : memref<1024xi8>
-    %is_valid = arith.cmpi sge, %distance_negated, %c0 : index
+    
+    %is_valid = arith.cmpi sle, %distance_negated, %c0 : index
     scf.if %is_valid {
       func.call @exit(%precond_fail) : (i32) -> ()
       scf.yield
     }
-    %negadist_variant = arith.subi %c0, %distance_negated : index
-    scf.for %i = %c0 to %negadist_variant step %c1024 {
-      %remaining = arith.subi %negadist_variant, %i : index
+    
+    scf.for %i = %c0 to %distance_negated step %c1024 {
+      %remaining = arith.subi %distance_negated, %i : index
       %is_full = arith.cmpi sgt, %remaining, %c1024 : index
       %step = arith.select %is_full, %c1024, %remaining : index
       %src_slice = memref.subview %origin[%i][%step][1] : memref<8xi8> to memref<?xi8, strided<[1], offset: ?>>

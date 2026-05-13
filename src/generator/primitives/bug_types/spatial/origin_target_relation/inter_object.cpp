@@ -50,20 +50,21 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > InterObject::generate(
 
   target_canvas->add_locals(
     {
-    "%ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index",
-    "%ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index",
+    "%ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index",
+    "%ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index",
     "%c0 = arith.constant 0 : index",
   });
-    // distance = ptr_second - ptr_first
-  target_canvas->add_locals({
-    "%diff = arith.subi %ptr_second, %ptr_first : index",
-    "%minus_diff = arith.subi %c0, %diff : index",
-    "%is_pos = arith.cmpi sgt, %diff, %c0 : index",
-  });
+    // distance = ptr_target - ptr_origin
+  // target_canvas->add_locals({
+  //   "%diff = arith.subi %ptr_target, %ptr_origin : index",
+  //   "%minus_diff = arith.subi %c0, %diff : index",
+  //   "%is_pos = arith.cmpi sgt, %diff, %c0 : index",
+  // });
   
   target_canvas->add_locals(
     {
-    "%distance = arith.select %is_pos, %diff, %minus_diff : index",
+    // "%distance = arith.select %is_pos, %diff, %minus_diff : index",
+    "%distance = arith.subi %ptr_target, %ptr_origin : index",
     "%distance_negated = arith.subi %c0, %distance : index"
     }
   );
@@ -78,18 +79,19 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > InterObject::generate(
   origin_canvas = origin->generate(target_canvas->get_lifetime_pos(), target_canvas, "origin", origin_size, true);
   origin_canvas->add_locals(
 {
-    "%ptr_first = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index",
-    "%ptr_second = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index"
+    "%ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index",
+    "%ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index"
       });
-    // distance = ptr_second - ptr_first
-  origin_canvas->add_locals({
-    "%diff = arith.subi %ptr_second, %ptr_first : index",
-    "%minus_diff = arith.subi %c0, %diff : index",
-    "%is_pos = arith.cmpi sgt, %diff, %c0 : index",
-  });
+    // distance = ptr_ - ptr_target
+  // origin_canvas->add_locals({
+  //   "%diff = arith.subi %ptr_, %ptr_target : index",
+  //   "%minus_diff = arith.subi %c0, %diff : index",
+  //   "%is_pos = arith.cmpi sgt, %diff, %c0 : index",
+  // });
   
   origin_canvas->add_locals({
-    "%distance = arith.select %is_pos, %diff, %minus_diff : index",
+    // "%distance = arith.select %is_pos, %diff, %minus_diff : index",
+    "%distance = arith.subi %ptr_target, %ptr_origin : index",
     "%distance_negated = arith.subi %c0, %distance : index"
   });
 

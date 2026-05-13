@@ -34,12 +34,9 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %target[%i] : memref<8xi8>
     }
-    %ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
-    %ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-    %diff = arith.subi %ptr_second, %ptr_first : index
-    %minus_diff = arith.subi %c0, %diff : index
-    %is_pos = arith.cmpi sgt, %diff, %c0 : index
-    %distance = arith.select %is_pos, %diff, %minus_diff : index
+    %ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
+    %ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
+    %distance = arith.subi %ptr_target, %ptr_origin : index
     %distance_negated = arith.subi %c0, %distance : index
     %read_value_350 = memref.alloca() : memref<8xi8>
     %src_slice = memref.subview %target[%c0][8][1] : memref<8xi8> to memref<8xi8, strided<[1], offset: ?>>

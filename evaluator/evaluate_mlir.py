@@ -16,6 +16,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -480,19 +482,78 @@ def run_single_test(mlir_path: str, config: str, output_dir: str, timeout: int, 
         cmd.extend(["--opt", str(opt_level)])
     env = os.environ.copy()
 
+    stdout_lines: List[str] = []
+    stderr_lines: List[str] = []
+
+    def _reader_thread(pipe, lines_list: List[str]):
+        try:
+            for line in iter(pipe.readline, ""):
+                lines_list.append(line)
+        finally:
+            pipe.close()
+
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+    )
+
+    stdout_thread = threading.Thread(target=_reader_thread, args=(proc.stdout, stdout_lines))
+    stderr_thread = threading.Thread(target=_reader_thread, args=(proc.stderr, stderr_lines))
+    stdout_thread.start()
+    stderr_thread.start()
+
+    POLL_INTERVAL = 10  # seconds
+    timed_out = False
+    start_time = time.time()
+    killed_for_detection = False
+
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            env=env,
-        )
-        return result.returncode, False, result.stdout, result.stderr
-    except subprocess.TimeoutExpired as e:
-        stdout_out = e.stdout.decode() if e.stdout else ""
-        stderr_out = e.stderr.decode() if e.stderr else ""
-        return -1, True, stdout_out, stderr_out
+        while proc.poll() is None:
+            elapsed = time.time() - start_time
+            remaining_timeout = timeout - elapsed
+            if remaining_timeout <= 0:
+                proc.kill()
+                proc.wait(timeout=5)
+                timed_out = True
+                break
+
+            # Sleep until the next poll point or until the process exits early.
+            sleep_time = min(POLL_INTERVAL, remaining_timeout)
+            try:
+                proc.wait(timeout=sleep_time)
+                break  # Process finished on its own – stop polling.
+            except subprocess.TimeoutExpired:
+                pass
+
+            # Batch-check accumulated output.
+            current_output = "".join(stdout_lines) + "".join(stderr_lines)
+            if _contains_detection_keyword(current_output):
+                proc.kill()
+                proc.wait(timeout=5)
+                killed_for_detection = True
+                break
+
+        stdout_thread.join(timeout=2)
+        stderr_thread.join(timeout=2)
+    except Exception as e:
+        proc.kill()
+        stdout_thread.join(timeout=1)
+        stderr_thread.join(timeout=1)
+        return -1, False, str(e), ""
+
+    stdout_str = "".join(stdout_lines)
+    stderr_str = "".join(stderr_lines)
+
+    # If we terminated early because of detection, fabricate a return code
+    # that classify_result will still map to DETECTED (it checks the output
+    # text first; 99 is not a special code so it falls through to DETECTED).
+    if killed_for_detection:
+        return 99, False, stdout_str, stderr_str
+
+    return proc.returncode, timed_out, stdout_str, stderr_str
 
 
 # Detection keywords that indicate a bug was caught (in stdout or stderr).
@@ -917,8 +978,8 @@ def main():
     parser.add_argument(
         "--timeout",
         type=int,
-        default=15,
-        help="Timeout per test in seconds (default: 30)",
+        default=60,
+        help="Timeout per test in seconds (default: 60)",
     )
     parser.add_argument(
         "-v",
@@ -939,13 +1000,13 @@ def main():
         help="Optimization level passed to crisp_phase2.py (default: 0)",
     )
     parser.add_argument(
-        "--bug-type",
+        "--bug",
         nargs="+",
         default=None,
         help=(
             "Only run test cases matching the given bug type(s). "
-            "Examples: --bug-type linear_ooba type_confusion_ooba, "
-            "--bug-type linearooba, --bug-type Double-free"
+            "Examples: --bug linear_ooba type_confusion_ooba, "
+            "--bug linearooba, --bug Double-free"
         ),
     )
     args = parser.parse_args()
@@ -963,7 +1024,7 @@ def main():
         args.verbose,
         args.keep,
         args.opt,
-        args.bug_type,
+        args.bug,
     )
 
     process_results(

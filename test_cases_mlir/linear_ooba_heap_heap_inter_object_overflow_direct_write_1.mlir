@@ -41,19 +41,22 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %target[%i] : memref<8xi8>
     }
-    %ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
-    %ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-    %diff = arith.subi %ptr_second, %ptr_first : index
-    %minus_diff = arith.subi %c0, %diff : index
-    %is_pos = arith.cmpi sgt, %diff, %c0 : index
-    %distance = arith.select %is_pos, %diff, %minus_diff : index
+    %ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
+    %ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
+    %distance = arith.subi %ptr_target, %ptr_origin : index
     %distance_negated = arith.subi %c0, %distance : index
     %use_val_target = memref.load %target[%c0] : memref<8xi8>
     func.call @use(%use_val_target) : (i8) -> ()
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
     func.call @use(%use_val_origin) : (i8) -> ()
-    %negadist_variant = arith.subi %c0, %distance_negated : index
-    scf.for %reach_index = %c0 to %negadist_variant step %c1 {
+    
+    %is_valid = arith.cmpi sle, %distance_negated, %c0 : index
+    scf.if %is_valid {
+      func.call @exit(%precond_fail) : (i32) -> ()
+      scf.yield
+    }
+    
+    scf.for %reach_index = %c0 to %distance_negated step %c1 {
       %__idx = arith.addi %reach_index, %__base : index
       memref.store %c0xFF, %origin[%__idx] : memref<8xi8>
     }

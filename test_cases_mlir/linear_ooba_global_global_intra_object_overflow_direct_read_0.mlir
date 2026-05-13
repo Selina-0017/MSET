@@ -41,7 +41,8 @@ module {
     func.call @use(%use_val_s_target) : (i8) -> ()
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
-    %is_valid = arith.cmpi sge, %distance, %c0 : index
+    
+    %is_valid = arith.cmpi sle, %distance, %c0 : index
     scf.if %is_valid {
       func.call @exit(%precond_fail) : (i32) -> ()
       scf.yield

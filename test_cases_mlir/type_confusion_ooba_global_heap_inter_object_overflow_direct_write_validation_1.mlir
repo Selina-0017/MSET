@@ -37,12 +37,9 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xAA, %target[%i] : memref<8xi8>
     }
-    %ptr_first = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
-    %ptr_second = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
-    %diff = arith.subi %ptr_second, %ptr_first : index
-    %minus_diff = arith.subi %c0, %diff : index
-    %is_pos = arith.cmpi sgt, %diff, %c0 : index
-    %distance = arith.select %is_pos, %diff, %minus_diff : index
+    %ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
+    %ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
+    %distance = arith.subi %ptr_target, %ptr_origin : index
     %distance_negated = arith.subi %c0, %distance : index
     memref.store %c0xFF, %origin[%idx] : memref<8xi8>
     func.call @exit(%test_success) : (i32) -> ()

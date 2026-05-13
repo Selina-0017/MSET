@@ -354,7 +354,7 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
   std::string dist = (is_number(distance) && std::stoll(distance) == 0) ? "c" + distance : distance;
   std::string stride_suffix = needs_strided ? ", strided<[1], offset: " + offset + ">>" : ">";
   std::string negadist_val;
-  if(distance.find("negated") != std::string::npos) {
+  if(distance.find("negated") != std::string::npos && needs_strided) {
     dist = "negadist_variant";
     negadist_val = "%" + dist + " = arith.subi %c0, %" + distance + " : index";
   }
@@ -410,6 +410,11 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
       split_access.access_lines.emplace_back("  memref.store %c0xFF, %" + from + "[" + idx_expr + "] : memref<8xi8" + stride_suffix);
     }
     split_access.access_lines.emplace_back("}");
+    if (!distance.empty() && generate_preconditions_check_distance)
+    {
+      auto preconds = generate_preconditions_check_distance(distance);
+      split_access.access_lines.insert(split_access.access_lines.begin(), preconds.begin(), preconds.end());
+    } //TODO
   }
   split_access.description = "index";
   return split_access;
@@ -457,6 +462,15 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_aux_ptr(
     split_access.access_lines.emplace_back("  %val = memref.load %" + from + "[%" + index_var + "] : memref<8xi8" + stride_suffix);
     split_access.access_lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
     split_access.access_lines.emplace_back("}");
+    if (!distance.empty())
+    {
+      // if (generate_preconditions_check_in_range) split_access.access_lines.insert(split_access.access_lines.begin(), "if ( " + generate_preconditions_check_in_range("aux_ptr", from, to) + " ) _exit(PRECONDITIONS_FAILED_VALUE);");
+      if (generate_preconditions_check_distance)
+      {
+        auto preconds = generate_preconditions_check_distance(distance);
+        split_access.access_lines.insert(split_access.access_lines.begin(), preconds.begin(), preconds.end());
+      }
+    }//TODO
   }
   else
   {

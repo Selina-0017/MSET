@@ -41,13 +41,14 @@ module {
     %distance_negated = arith.subi %c0, %distance : index
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
     func.call @use(%use_val_origin) : (i8) -> ()
-    %is_valid = arith.cmpi sge, %distance_negated, %c0 : index
+    
+    %is_valid = arith.cmpi sle, %distance_negated, %c0 : index
     scf.if %is_valid {
       func.call @exit(%precond_fail) : (i32) -> ()
       scf.yield
     }
-    %negadist_variant = arith.subi %c0, %distance_negated : index
-    scf.for %reach_index = %c0 to %negadist_variant step %c1 {
+    
+    scf.for %reach_index = %c0 to %distance_negated step %c1 {
       %__idx = arith.addi %reach_index, %__base : index
       %val = memref.load %origin[%__idx] : memref<8xi8>
       func.call @use(%val) : (i8) -> ()
