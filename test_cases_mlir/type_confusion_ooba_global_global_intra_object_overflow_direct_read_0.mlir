@@ -20,15 +20,14 @@ module {
   func.func private @exit(%arg0: i32) -> ()
   memref.global @s : memref<16xi8> = dense<170>
 
-  func.func @f() -> i32 {
+  func.func @f() -> memref<8xi8> {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
     %distance = arith.constant 9 : index
+    %big = arith.constant 536870912 : index
     %c1 = arith.constant 1 : index
-    %c2 = arith.constant 2 : index
-    %c4 = arith.constant 4 : index
-    %c0_i32 = arith.constant 0 : i32
+    %c8 = arith.constant 8 : index
     // locals
 
 
@@ -36,27 +35,43 @@ module {
     %s_origin = memref.subview %s[0][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 0>>
     %s_target = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
     %distance_negated = arith.subi %c0, %distance : index
-    %viewed = memref.view %s_origin[%c0][%c2] : memref<8xi8, strided<[1], offset: 0>> to memref<?xi32>
-    %distance_div_4 = arith.divsi %distance, %c4 : index
-    scf.for %i = %c0 to %distance_div_4 step %c1 {
-      %val = memref.load %viewed[%i] : memref<?xi32>
-      %val_i8 = arith.trunci %val : i32 to i8
-      func.call @use(%val_i8) : (i8) -> ()
+    
+    %is_valid = arith.cmpi sle, %distance, %c0 : index
+    scf.if %is_valid {
+      func.call @exit(%precond_fail) : (i32) -> ()
+      scf.yield
     }
-    scf.for %j = %c0 to %c2 step %c1 {
-      %idx = arith.addi %j, %distance_div_4 : index
-      %val2 = memref.load %viewed[%idx] : memref<?xi32>
-      %val2_i8 = arith.trunci %val2 : i32 to i8
-      func.call @use(%val2_i8) : (i8) -> ()
+    %cond11 = arith.cmpi sgt, %distance, %c0 : index
+    %cond12 = arith.cmpi sgt, %distance, %big : index
+    %minus_big = arith.subi %c0, %big : index
+    %cond21 = arith.cmpi slt, %distance, %c0 : index
+    %cond22 = arith.cmpi slt, %distance, %minus_big : index
+    %cond1 = arith.andi %cond11, %cond12 : i1
+    %cond2 = arith.andi %cond21, %cond22 : i1
+    %big_not_enough = arith.ori %cond1, %cond2 : i1
+    scf.if %big_not_enough {
+      func.call @exit(%precond_fail) : (i32) -> ()
+      scf.yield
+    }
+    %viewed = memref.subview %s_origin[0][%big][1] : memref<8xi8, strided<[1], offset: 0>> to memref<?xi8>
+    scf.for %i = %c0 to %distance step %c1 {
+      %val = memref.load %viewed[%i] : memref<?xi8>
+      func.call @use(%val) : (i8) -> ()
+    }
+    scf.for %j = %c0 to %c8 step %c1 {
+      %idx = arith.addi %j, %distance : index
+      %val2 = memref.load %viewed[%idx] : memref<?xi8>
+      func.call @use(%val2) : (i8) -> ()
     }
     func.call @exit(%test_success) : (i32) -> ()
 
-    return %c0_i32 : i32
+    %c0_memref = memref.alloca() : memref<8xi8>
+    return %c0_memref : memref<8xi8>
   }
 
   func.func @main() -> i32 {
     %c0_i32 = arith.constant 0 : i32
-    %ret = func.call @f() : () -> i32
+    %ret = func.call @f() : () -> memref<8xi8>
 
     return %c0_i32 : i32
   }

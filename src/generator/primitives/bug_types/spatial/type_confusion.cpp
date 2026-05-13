@@ -63,8 +63,8 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate(
     if ( origin_target_canvas->get_forces_underflow() ) continue; // skip underflows as they are incompatible with type confusions
 
     ssize_t static_dist = origin_target_canvas->get_distance_static_value();
-    if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
-    if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
+    // if ( is_a<Overflow>(flow) && static_dist < 0 ) continue;
+    // if ( is_a<Underflow>(flow) && static_dist > 0 ) continue;
 
     // manual i32 assembly variant (replaces reinterpret_cast)
     std::shared_ptr<OriginTargetCodeCanvas> variant_manual_i32 = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
@@ -78,13 +78,15 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate(
 
     // big type variant
     std::shared_ptr<OriginTargetCodeCanvas> variant_big_type = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
+    variant_big_type->add_during_lifetime("%big = arith.constant 536870912 : index"); //2^29 BIG_TYPE_SIZE
     std::vector<std::string> big_type_code = access_location->generate_big_type(
       access_action,
       origin_name,
       origin_type,
-      "c0",   // view offset
-      "c2",   // view sizes (dynamic dim)
-      origin_target_canvas->get_distance()
+      "big",   // view sizes (dynamic dim)
+      origin_target_canvas->get_distance(),
+      generate_preconditions_check_distance,
+      origin_offset   // view offset
     );
     variant_big_type->add_during_lifetime(big_type_code);
     variant_big_type->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
@@ -98,7 +100,10 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> TypeConfusion::generate(
       variant_with_load_widening->get_origin_name(),
       origin_type,
       "c4",   // view offset: 4 bytes, causing second i32 to be OOB
-      "c1" // access index: second i32
+      "c1", // access index: second i32
+      generate_preconditions_check_distance,
+      variant_with_load_widening->get_distance(),
+      origin_offset
     );//TODO
     variant_with_load_widening->add_during_lifetime(load_widening_code);
     variant_with_load_widening->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");

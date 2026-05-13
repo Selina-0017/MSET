@@ -77,18 +77,21 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_unused_m
   std::shared_ptr<StackRegion> stack_memory_region_simple = std::make_shared<StackRegion>(*stack_memory_region);
   std::shared_ptr<RegionCodeCanvas> region_canvas = stack_memory_region_simple->generate(std::make_shared<CodeCanvas>(CodeCanvas()), "target", 8, true);
 
-  region_canvas->add_global("memref.global @target_address : memref<8xi8> = dense<0>");
-  region_canvas->add_during_lifetime({
-    "%c0_v = arith.constant 0 : index",
-    "%c8_v = arith.constant 8 : index",
-    "%target_address = memref.view %target[%c0_v][] : memref<8xi8> to memref<8xi8>"
-  });
+  // region_canvas->add_during_lifetime({
+  //   "%c0_v = arith.constant 0 : index",
+  //   "%c8_v = arith.constant 8 : index",
+  //   "%assert_in_use_after_scope = arith.cmpi sge,%c8_v, %c0_v : index",
+  //   "scf.if %assert_in_use_after_scope {",
+  //   "  func.return %target : memref<8xi8>",
+  //   "} else {",
+  //   "  func.call @exit(%precond_fail) : (i32) -> ()",
+  //   "}"
+  // });
   
   AccessLocation::SplitAccess access_type_code = access_location->generate_split_const_vars(
-    access_action, "target_address", 8, 0, "", false, "0", "memref<8xi8>");
+    access_action, "ret", 8, 0, "", false, "0", "memref<8xi8>");
 
   access_type_code.access_lines.insert(access_type_code.access_lines.begin(), "%test_success = arith.constant 42 : i32");
-  access_type_code.access_lines.insert(access_type_code.access_lines.begin(), "%target_address = memref.get_global @target_address : memref<8xi8>");
   CodeCanvas::code_pos_t index = region_canvas->add_at(region_canvas->get_f_call_pos() + 1, access_type_code.to_lines(), "    ");
   region_canvas->add_at(index, "func.call @exit(%test_success) : (i32) -> ()", "    ");
 
@@ -190,15 +193,15 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
   std::vector<std::string> allocation = heap_memory_region->generate_reallocation("new_reallocated", 8, true, "    ");
 
   reused_region_canvas_repeat->add_during_lifetime({
-    "%c0_loop = arith.constant 0 : index",
-    "%c1_loop = arith.constant 1 : index",
-    "%c_max_loop = arith.constant " + max_reallocated_retries + " : index",
+    "%c0 = arith.constant 0 : index",
+    "%c1 = arith.constant 1 : index",
+    "%c_max = arith.constant " + max_reallocated_retries + " : index",
     "%ctrue_loop = arith.constant 1 : i1"
   });
 
   std::vector<std::string> allocation_for = heap_memory_region->generate_reallocation("new_reallocated", 8, true, "    ");
   reused_region_canvas_repeat->add_during_lifetime({ //TODO: 这里替换为scf.for的写法
-    "%reallocated_for, %not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
+    "%reallocated_for, %not_matched_for = scf.for %counter = %c0 to %c_max step %c1",
     "    iter_args(%reallocated_iter = %reallocated, %not_matched_iter = %ctrue_loop)",
     "    -> (memref<8xi8>, i1) {",
     "  %next_reallocated, %next_not_matched = scf.if %not_matched_iter -> (memref<8xi8>, i1) {",
@@ -315,12 +318,12 @@ std::vector< std::shared_ptr<RegionCodeCanvas>>UseAfterStar::_generate_reused_me
   reused_region_canvas_repeated->add_at(reused_region_canvas_repeated->get_other_f_call_pos(),
     std::vector<std::string>{//TODO: 这里替换为scf.for的写法
     "%precond_fail = arith.constant 43 : i32",
-      "%c0_loop = arith.constant 0 : index",
-      "%c1_loop = arith.constant 1 : index",
-      "%c_max_loop = arith.constant " + max_reallocated_retries + " : index",
-      "%ctrue_loop = arith.constant 1 : i1",
-      "%not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
-      "    iter_args(%not_matched_iter = %ctrue_loop)",
+      "%c0 = arith.constant 0 : index",
+      "%c1 = arith.constant 1 : index",
+      "%c_max = arith.constant " + max_reallocated_retries + " : index",
+      "%ctrue = arith.constant 1 : i1",
+      "%not_matched_for = scf.for %counter = %c0 to %c_max step %c1",
+      "    iter_args(%not_matched_iter = %ctrue)",
       "    -> (i1) {",
       "  %next_not_matched = scf.if %not_matched_iter -> (i1) {"
     },
@@ -436,12 +439,12 @@ std::vector< std::shared_ptr<RegionCodeCanvas>>UseAfterStar::_generate_reused_me
   reused_region_canvas_array_repeated->add_at(reused_region_canvas_array_repeated->get_other_f_call_pos(),
     std::vector<std::string>{//TODO: 这里替换为scf.for的写法
     "%precond_fail = arith.constant 43 : i32",
-      "%c0_loop = arith.constant 0 : index",
-      "%c1_loop = arith.constant 1 : index",
-      "%c_max_loop = arith.constant " + max_reallocated_retries + " : index",
-      "%ctrue_loop = arith.constant 1 : i1",
-      "%not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
-      "    iter_args(%not_matched_iter = %ctrue_loop)",
+      "%c0 = arith.constant 0 : index",
+      "%c1 = arith.constant 1 : index",
+      "%c_max = arith.constant " + max_reallocated_retries + " : index",
+      "%ctrue = arith.constant 1 : i1",
+      "%not_matched_for = scf.for %counter = %c0 to %c_max step %c1",
+      "    iter_args(%not_matched_iter = %ctrue)",
       "    -> (i1) {",
       "  %next_not_matched = scf.if %not_matched_iter -> (i1) {"
     },
@@ -613,13 +616,12 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
   std::vector<std::string> allocation = heap_memory_region->generate_reallocation("new_reallocated", 8, true, "  ");
   std::vector<std::string> deallocation = heap_memory_region->generate_deallocation("reallocated", 8, "  ");
   reused_region_canvas_repeat->add_during_lifetime({
-    "%c0_loop = arith.constant 0 : index",
-    "%c1_loop = arith.constant 1 : index",
-    "%c_max_loop = arith.constant " + max_reallocated_retries_validation + " : index",
-    "%ctrue_loop = arith.constant 1 : i1"
+    "%c0 = arith.constant 0 : index",
+    "%c1 = arith.constant 1 : index",
+    "%c_max = arith.constant " + max_reallocated_retries_validation + " : index"
   });
   reused_region_canvas_repeat->add_during_lifetime({//TODO: 这里替换为scf.for的写法
-    "%reallocated_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
+    "%reallocated_for = scf.for %counter = %c0 to %c_max step %c1",
     "    iter_args(%reallocated_iter = %reallocated)",
     "    -> (memref<8xi8>) {",
     "  memref.dealloc %reallocated_iter : memref<8xi8>"
@@ -678,12 +680,12 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
   reused_region_canvas_repeated->add_at(reused_region_canvas_repeated->get_f_call_pos(),
     std::vector<std::string>{//TODO: 这里替换为scf.for的写法
         "%test_success = arith.constant 42 : i32",
-      "%c0_loop = arith.constant 0 : index",
-      "%c1_loop = arith.constant 1 : index",
-      "%c_max_loop = arith.constant " + max_reallocated_retries_validation + " : index",
-      "%ctrue_loop = arith.constant 1 : i1",
-      "%not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
-      "    iter_args(%not_matched_iter = %ctrue_loop)",
+      "%c0 = arith.constant 0 : index",
+      "%c1 = arith.constant 1 : index",
+      "%c_max = arith.constant " + max_reallocated_retries_validation + " : index",
+      "%ctrue = arith.constant 1 : i1",
+      "%not_matched_for = scf.for %counter = %c0 to %c_max step %c1",
+      "    iter_args(%not_matched_iter = %ctrue)",
       "    -> (i1) {",
       "  %next_not_matched = scf.if %not_matched_iter -> (i1) {"
     },
@@ -778,12 +780,12 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
   reused_region_canvas_array_repeated->add_at(reused_region_canvas_array_repeated->get_f_call_pos(),
     std::vector<std::string>{//TODO: 这里替换为scf.for的写法
       "%test_success = arith.constant 42 : i32",
-      "%c0_loop = arith.constant 0 : index",
-      "%c1_loop = arith.constant 1 : index",
-      "%c_max_loop = arith.constant " + max_reallocated_retries_validation + " : index",
-      "%ctrue_loop = arith.constant 1 : i1",
-      "%not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop",
-      "    iter_args(%not_matched_iter = %ctrue_loop)",
+      "%c0 = arith.constant 0 : index",
+      "%c1 = arith.constant 1 : index",
+      "%c_max = arith.constant " + max_reallocated_retries_validation + " : index",
+      "%ctrue = arith.constant 1 : i1",
+      "%not_matched_for = scf.for %counter = %c0 to %c_max step %c1",
+      "    iter_args(%not_matched_iter = %ctrue)",
       "    -> (i1) {",
       "  %next_not_matched = scf.if %not_matched_iter -> (i1) {"
     },

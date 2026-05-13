@@ -28,18 +28,18 @@ CodeCanvas::CodeCanvas():
     "  // globals",                                  // 1
     "",                                              // 2
     "",                                              // 3
-    "  func.func @f() -> i32 {",                     // 4
+    "  func.func @f() -> memref<8xi8> {",                     // 4
     "    // locals",                                 // 5
     "",                                              // 6
     "",                                              // 7
     "",                                              // 8
-    "    %c0_i32 = arith.constant 0 : i32",          // 9
-    "    return %c0_i32 : i32",                      // 10
+    "    %c0_memref = memref.alloca() : memref<8xi8>",// 9
+    "    return %c0_memref : memref<8xi8>",          // 10
     "  }",                                           // 11
     "",                                              // 12
     "  func.func @main() -> i32 {",                  // 13
     "    %c0_i32 = arith.constant 0 : i32",          // 14
-    "    %ret = func.call @f() : () -> i32",         // 15
+    "    %ret = func.call @f() : () -> memref<8xi8>",// 15
     "",                                              // 16
     "    return %c0_i32 : i32",                      // 17
     "  }",                                           // 18
@@ -286,7 +286,7 @@ std::string CodeCanvas::to_string() const
 void CodeCanvas::_generate_other_f_and_call()
 {
   std::vector<std::string> other_f_body = {
-    "  func.func @other_f() -> i32 {", // -5
+    "  func.func @other_f(%arg0:memref<8xi8>) -> i32 {", // -5
     "    // locals",                     // -4
     "",                                  // -3
     "    %c0_i32 = arith.constant 0 : i32", // -2
@@ -294,7 +294,7 @@ void CodeCanvas::_generate_other_f_and_call()
     "  }",                               // 0
   };
   current_pos_in_other_f = add_at(global_pos + 1, other_f_body, "" ) - 4;
-  other_f_call_pos = add_at(f_call_pos + 1, "%_ = func.call @other_f() : () -> i32", "    ") - 1;
+  other_f_call_pos = add_at(f_call_pos + 1, "%_ = func.call @other_f(%ret) : (memref<8xi8>) -> i32", "    ") - 1;
 }
 
 void CodeCanvas::_update_indexes(code_pos_t from, size_t amount)

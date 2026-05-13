@@ -8,7 +8,7 @@ python evaluate_mlir.py
 
 默认行为：
 - 读取 `test_cases_mlir/` 目录下的所有 `.mlir` 文件
-- 并行数 `min(CPU数, 4)`
+- 并行数 `CPU数`
 - 每个样例超时 30 秒
 
 ### 可用命令示例

@@ -19,7 +19,7 @@ module {
   func.func @fake_free(%arg0: i8) -> () {func.return}
   memref.global @heap_obj : memref<8xi8> = uninitialized
 
-  func.func @f() -> i32 {
+  func.func @f() -> memref<8xi8> {
     %c8_mof = arith.constant 8 : index
     %c0 = arith.constant 0 : index
     %c104_mof = arith.constant 104 : index
@@ -27,7 +27,6 @@ module {
     %c0x40 = arith.constant 64 : i8
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-    %c0_i32 = arith.constant 0 : i32
     // locals
 
     %target = memref.alloca() : memref<160xi8>
@@ -41,7 +40,8 @@ module {
     %heap_obj = memref.get_global @heap_obj : memref<8xi8>
 
 
-    return %c0_i32 : i32
+    %c0_memref = memref.alloca() : memref<8xi8>
+    return %c0_memref : memref<8xi8>
   }
 
   func.func @main() -> i32 {
@@ -50,7 +50,7 @@ module {
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
   %c8 = arith.constant 8 : index
-    %ret = func.call @f() : () -> i32
+    %ret = func.call @f() : () -> memref<8xi8>
   %heap_obj = memref.get_global @heap_obj : memref<8xi8>
   scf.for %i = %c0 to %c8 step %c1 {
     %val = memref.load %heap_obj[%i] : memref<8xi8>

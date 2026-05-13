@@ -19,7 +19,7 @@ module {
   memref.global @target_addr : memref<8xi8> = dense<170>
   memref.global @last_address : memref<8xi8> = dense<0>
 
-  func.func @other_f() -> i32 {
+  func.func @other_f(%arg0:memref<8xi8>) -> i32 {
   %test_success = arith.constant 42 : i32
   %precond_fail = arith.constant 43 : i32
   %ctrue = arith.constant 1 : i1
@@ -52,7 +52,7 @@ module {
 
     return %c0_i32 : i32
   }
-  func.func @f() -> i32 {
+  func.func @f() -> memref<8xi8> {
     %c0 = arith.constant 0 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
@@ -61,7 +61,6 @@ module {
   %c0_v = arith.constant 0 : index
   %c8_v = arith.constant 8 : index
     %precond_fail = arith.constant 43 : i32
-    %c0_i32 = arith.constant 0 : i32
     // locals
 
     %target = memref.alloca() : memref<8xi8>
@@ -71,23 +70,24 @@ module {
   %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
 
 
-    return %c0_i32 : i32
+    %c0_memref = memref.alloca() : memref<8xi8>
+    return %c0_memref : memref<8xi8>
   }
 
   func.func @main() -> i32 {
     %c0_i32 = arith.constant 0 : i32
   %precond_fail = arith.constant 43 : i32
-  %c0_loop = arith.constant 0 : index
-  %c1_loop = arith.constant 1 : index
-  %c_max_loop = arith.constant 1000000000 : index
-  %ctrue_loop = arith.constant 1 : i1
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  %c_max = arith.constant 1000000000 : index
+  %ctrue = arith.constant 1 : i1
       %cfalse = arith.constant 0 : i1
-    %ret = func.call @f() : () -> i32
-  %not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop
-      iter_args(%not_matched_iter = %ctrue_loop)
+    %ret = func.call @f() : () -> memref<8xi8>
+  %not_matched_for = scf.for %counter = %c0 to %c_max step %c1
+      iter_args(%not_matched_iter = %ctrue)
       -> (i1) {
     %next_not_matched = scf.if %not_matched_iter -> (i1) {
-    %_ = func.call @other_f() : () -> i32
+    %_ = func.call @other_f(%ret) : (memref<8xi8>) -> i32
       scf.yield %cfalse : i1
     } else {
       scf.yield %not_matched_iter : i1

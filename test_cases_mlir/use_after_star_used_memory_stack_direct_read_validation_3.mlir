@@ -16,7 +16,7 @@ module {
   func.func private @exit(%arg0: i32) -> ()
   memref.global @last_address : memref<8xi8> = dense<0>
 
-  func.func @f() -> i32 {
+  func.func @f() -> memref<8xi8> {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
@@ -28,7 +28,6 @@ module {
     %c8_v = arith.constant 8 : index
     %c16 = arith.constant 16 : index
     %cfalse = arith.constant 0 : i1
-    %c0_i32 = arith.constant 0 : i32
     // locals
 
     %reallocated = memref.alloca() : memref<8xi8>
@@ -55,22 +54,23 @@ module {
     }
     func.call @exit(%test_success) : (i32) -> ()
 
-    return %c0_i32 : i32
+    %c0_memref = memref.alloca() : memref<8xi8>
+    return %c0_memref : memref<8xi8>
   }
 
   func.func @main() -> i32 {
     %c0_i32 = arith.constant 0 : i32
   %test_success = arith.constant 42 : i32
-  %c0_loop = arith.constant 0 : index
-  %c1_loop = arith.constant 1 : index
-  %c_max_loop = arith.constant 100 : index
-  %ctrue_loop = arith.constant 1 : i1
+  %c0 = arith.constant 0 : index
+  %c1 = arith.constant 1 : index
+  %c_max = arith.constant 100 : index
+  %ctrue = arith.constant 1 : i1
       %cfalse = arith.constant 0 : i1
-  %not_matched_for = scf.for %counter = %c0_loop to %c_max_loop step %c1_loop
-      iter_args(%not_matched_iter = %ctrue_loop)
+  %not_matched_for = scf.for %counter = %c0 to %c_max step %c1
+      iter_args(%not_matched_iter = %ctrue)
       -> (i1) {
     %next_not_matched = scf.if %not_matched_iter -> (i1) {
-    %ret = func.call @f() : () -> i32
+    %ret = func.call @f() : () -> memref<8xi8>
       scf.yield %cfalse : i1
     } else {
       scf.yield %not_matched_iter : i1

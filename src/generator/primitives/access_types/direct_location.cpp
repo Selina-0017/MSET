@@ -619,57 +619,68 @@ std::vector<std::string> DirectLocation::generate_uint8(
 }
 
 std::vector<std::string> DirectLocation::generate_big_type(
-  std::shared_ptr<AccessAction> action,
-  const std::string &orig_var_name,
-  const std::string &orig_type,
-  const std::string &view_offset,
-  const std::string &view_sizes,
-  const std::string &distance
+std::shared_ptr<AccessAction> action,
+    const std::string &orig_var_name,
+    const std::string &orig_type,
+    const std::string &view_sizes,
+    const std::string &distance,
+    std::function<std::vector<std::string>(const std::string&)> generate_preconditions_check_distance,
+    const std::string &orig_offset
 ) const
 {
   std::vector<std::string> lines;
-  
-  lines.emplace_back("%viewed = memref.view %" + orig_var_name + "[%" + view_offset + "][%" + view_sizes + "] : " + orig_type + " to memref<?xi32>");
+  std::string dst_type = "memref<?xi8>";
+  if(orig_offset != "0") {
+    dst_type = "memref<?xi8, strided<[1], offset: " + orig_offset + ">>";  
+  } 
+  lines.emplace_back("%viewed = memref.subview %" + orig_var_name + "[0][%" + view_sizes + "][1] : " + orig_type + " to " + dst_type);
   lines.emplace_back("%c0 = arith.constant 0 : index");
   lines.emplace_back("%c1 = arith.constant 1 : index");
-  lines.emplace_back("%c2 = arith.constant 2 : index");
-  lines.emplace_back("%c4 = arith.constant 4 : index");
-  lines.emplace_back("%distance_div_4 = arith.divsi %" + distance + ", %c4 : index");
+  lines.emplace_back("%c8 = arith.constant 8 : index");
   if (is_a<ReadAction>(action))
   {
-    // if (!distance.empty() && generate_preconditions_check_distance)
-    // {
-    //   lines.insert(lines.begin(), "if ( !(" + distance + " < (" + std::to_string(size) + " + 1) ) ) _exit(PRECONDITIONS_FAILED_VALUE);");
-    //   lines.insert(lines.begin(), "if ( !(" + generate_preconditions_check_distance(distance) + ") ) _exit(PRECONDITIONS_FAILED_VALUE);");
-    // }//TODO
-    lines.emplace_back("scf.for %i = %c0 to %distance_div_4 step %c1 {");
-    lines.emplace_back("  %val = memref.load %viewed[%i] : memref<?xi32>");
-    lines.emplace_back("  %val_i8 = arith.trunci %val : i32 to i8");
-    lines.emplace_back("  func.call @use(%val_i8) : (i8) -> ()");
+    lines.emplace_back("scf.for %i = %c0 to %distance step %c1 {");
+    lines.emplace_back("  %val = memref.load %viewed[%i] : " + dst_type);
+    lines.emplace_back("  func.call @use(%val) : (i8) -> ()");
     lines.emplace_back("}");
-    lines.emplace_back("scf.for %j = %c0 to %c2 step %c1 {");
-    lines.emplace_back("  %idx = arith.addi %j, %distance_div_4 : index");
-    lines.emplace_back("  %val2 = memref.load %viewed[%idx] : memref<?xi32>");
-    lines.emplace_back("  %val2_i8 = arith.trunci %val2 : i32 to i8");
-    lines.emplace_back("  func.call @use(%val2_i8) : (i8) -> ()");
+    lines.emplace_back("scf.for %j = %c0 to %c8 step %c1 {");
+    lines.emplace_back("  %idx = arith.addi %j, %distance : index");
+    lines.emplace_back("  %val2 = memref.load %viewed[%idx] : " + dst_type);
+    lines.emplace_back("  func.call @use(%val2) : (i8) -> ()");
     lines.emplace_back("}");
   }
   else
   {
-    // if (!distance.empty() && generate_preconditions_check_distance)
-    // {
-    //   lines.insert(lines.begin(), "if ( !(" + distance + " < (" + std::to_string(size) + " + 1) ) ) _exit(PRECONDITIONS_FAILED_VALUE);");
-    //   lines.insert(lines.begin(), "if ( !(" + generate_preconditions_check_distance(distance) + ") ) _exit(PRECONDITIONS_FAILED_VALUE);");
-    // }//TODO
-    lines.emplace_back("%c0xFFFFFFFF = arith.constant 4294967295 : i32");
-    lines.emplace_back("scf.for %i = %c0 to %distance_div_4 step %c1 {");
-    lines.emplace_back("  memref.store %c0xFFFFFFFF, %viewed[%i] : memref<?xi32>");
+    lines.emplace_back("%c0xFF = arith.constant 255 : i8");
+    lines.emplace_back("scf.for %i = %c0 to %distance step %c1 {");
+    lines.emplace_back("  memref.store %c0xFF, %viewed[%i] : " + dst_type);
     lines.emplace_back("}");
-    lines.emplace_back("scf.for %j = %c0 to %c2 step %c1 {");
-    lines.emplace_back("  %idx = arith.addi %j, %distance_div_4 : index");
-    lines.emplace_back("  memref.store %c0xFFFFFFFF, %viewed[%idx] : memref<?xi32>");
+    lines.emplace_back("scf.for %j = %c0 to %c8 step %c1 {");
+    lines.emplace_back("  %idx = arith.addi %j, %distance : index");
+    lines.emplace_back("  memref.store %c0xFF, %viewed[%idx] : " + dst_type);
     lines.emplace_back("}");
   }
+  //插入地址比较
+  if (!distance.empty() && generate_preconditions_check_distance)
+  {
+    std::vector<std::string> precond1 = {
+      "%cond11 = arith.cmpi sgt, %" + distance + ", %c0 : index",
+      "%cond12 = arith.cmpi sgt, %" + distance + ", %" + view_sizes + " : index",
+      "%minus_big = arith.subi %c0, %" + view_sizes + " : index",
+      "%cond21 = arith.cmpi slt, %" + distance + ", %c0 : index",
+      "%cond22 = arith.cmpi slt, %" + distance + ", %minus_big : index",
+      "%cond1 = arith.andi %cond11, %cond12 : i1",
+      "%cond2 = arith.andi %cond21, %cond22 : i1",
+      "%big_not_enough = arith.ori %cond1, %cond2 : i1",
+      "scf.if %big_not_enough {",
+      "  func.call @exit(%precond_fail) : (i32) -> ()",
+     "  scf.yield",
+     "}"
+    };
+    lines.insert(lines.begin(), precond1.begin(), precond1.end());
+    auto precond2 = generate_preconditions_check_distance(distance);
+    lines.insert(lines.begin(), precond2.begin(), precond2.end());
+  }//TODO
   return lines;
 }
 
@@ -678,39 +689,55 @@ std::vector<std::string> DirectLocation::generate_load_widening(
   const std::string &orig_var_name,
   const std::string &orig_type,
   const std::string &view_offset,
-  const std::string &access_index
+  const std::string &access_index,
+  std::function<std::vector<std::string>(const std::string&)> generate_preconditions_check_distance,
+  const std::string &distance,
+  const std::string &orig_offset
 ) const
 {
   std::vector<std::string> lines;
-  lines.emplace_back("%viewed = memref.view %" + orig_var_name + "[%" + view_offset + "][] : " + orig_type + " to memref<2xi32>");
   lines.emplace_back("%c0 = arith.constant 0 : index");
   lines.emplace_back("%c1 = arith.constant 1 : index");
   lines.emplace_back("%c2 = arith.constant 2 : index");
   lines.emplace_back("%c4 = arith.constant 4 : index");
+  // 对 alloc而来 /subview里offset 为0 的origin做view
+  std::string dst_type = "memref<2xi32>";
+  std::vector<std::string>view_lines ={ "%viewed = memref.view %" + orig_var_name + "[%" + view_offset + "][] : " + orig_type + " to " + dst_type };
+  //处理offset != 0 && 由subview 而来的origin。先对parent 做view，再取小的subview。
+  if(orig_offset != "0"){
+    std::string new_orig_offset = std::to_string((std::stoll(orig_offset)/4));
+    view_lines = {
+      "%view_s = memref.view %s[ %" + view_offset + "][] : memref<16xi8> to memref<4xi32>",
+      "%viewed = memref.subview %view_s[" + new_orig_offset + "][2][1] : memref<4xi32> to memref<2xi32, strided<[1], offset: " + new_orig_offset + ">>"
+    };
+    dst_type = "memref<2xi32, strided<[1], offset: " + new_orig_offset + ">>";
+  }
+  lines.insert(lines.end(), view_lines.begin(), view_lines.end());
   if (is_a<ReadAction>(action))
   {
-    lines.emplace_back("scf.for %i = %c0 to %c2 step %c1 {");
-    lines.emplace_back("  %val = memref.load %viewed[%i] : memref<2xi32>");
+    lines.emplace_back("  %val = memref.load %viewed[%c1] : " + dst_type);
     lines.emplace_back("  %val_i8 = arith.trunci %val : i32 to i8");
     lines.emplace_back("  func.call @use(%val_i8) : (i8) -> ()");
-    lines.emplace_back("}");
-    // if (!distance.empty() && generate_preconditions_check_distance)
-    // {
-    //   lines.insert(lines.begin(), "if ( !(" + distance + " < (" + std::to_string(size) + " + 1) ) ) _exit(PRECONDITIONS_FAILED_VALUE);");
-    //   lines.insert(lines.begin(), "if ( !(" + generate_preconditions_check_distance(distance) + ") ) _exit(PRECONDITIONS_FAILED_VALUE);");
-    // }//TODO
   }
   else
   {
     lines.emplace_back("%c0xFFFFFFFF = arith.constant 4294967295 : i32");
-    lines.emplace_back("scf.for %i = %c0 to %c2 step %c1 {");
-    lines.emplace_back("  memref.store %c0xFFFFFFFF, %viewed[%i] : memref<2xi32>");
-    lines.emplace_back("}");
-    // if (!distance.empty() && generate_preconditions_check_distance)
-    // {
-    //   lines.insert(lines.begin(), "if ( !(" + distance + " < (" + std::to_string(size) + " + 1) ) ) _exit(PRECONDITIONS_FAILED_VALUE);");
-    //   lines.insert(lines.begin(), "if ( !(" + generate_preconditions_check_distance(distance) + ") ) _exit(PRECONDITIONS_FAILED_VALUE);");
-    // }//TODO
+    lines.emplace_back("memref.store %c0xFFFFFFFF, %viewed[%c1] : " + dst_type);
   }
+//插入地址比较
+  if (!distance.empty() && generate_preconditions_check_distance)
+  {
+    std::vector<std::string> precond1 = {
+      "%c11 = arith.constant 11 : index", //size + 3 = 8 + 3 = 11
+      "%too_far = arith.cmpi sgt, %" + distance + ", %c11 : index",
+      "scf.if %too_far {",
+      "  func.call @exit(%precond_fail) : (i32) -> ()",
+     "  scf.yield",
+     "}"
+    };
+    lines.insert(lines.begin(), precond1.begin(), precond1.end());
+    auto precond2 = generate_preconditions_check_distance(distance);
+    lines.insert(lines.begin(), precond2.begin(), precond2.end());
+  }//TODO
   return lines;
 }

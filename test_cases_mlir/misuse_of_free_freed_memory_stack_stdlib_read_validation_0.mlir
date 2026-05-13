@@ -18,7 +18,7 @@ module {
   func.func private @exit(%arg0: i32) -> ()
   memref.global @heap_obj : memref<8xi8> = uninitialized
 
-  func.func @f() -> i32 {
+  func.func @f() -> memref<8xi8> {
     %c8_mof = arith.constant 8 : index
     %c0 = arith.constant 0 : index
     %c104_mof = arith.constant 104 : index
@@ -26,7 +26,6 @@ module {
     %c0x40 = arith.constant 64 : i8
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
-    %c0_i32 = arith.constant 0 : i32
     // locals
 
     %target = memref.alloca() : memref<160xi8>
@@ -38,14 +37,15 @@ module {
     %heap_obj = memref.get_global @heap_obj : memref<8xi8>
 
 
-    return %c0_i32 : i32
+    %c0_memref = memref.alloca() : memref<8xi8>
+    return %c0_memref : memref<8xi8>
   }
 
   func.func @main() -> i32 {
     %c0_i32 = arith.constant 0 : i32
   %test_success = arith.constant 42 : i32
   %c0 = arith.constant 0 : index
-    %ret = func.call @f() : () -> i32
+    %ret = func.call @f() : () -> memref<8xi8>
   %heap_obj = memref.get_global @heap_obj : memref<8xi8>
   %read_value_25 = memref.alloca() : memref<8xi8>
   memref.copy %heap_obj, %read_value_25 : memref<8xi8> to memref<8xi8>

@@ -130,9 +130,10 @@ public:
     std::shared_ptr<AccessAction> action,
     const std::string &orig_var_name,
     const std::string &orig_type,
-    const std::string &view_offset,
     const std::string &view_sizes,
-    const std::string &distance
+    const std::string &distance,
+    std::function<std::vector<std::string>(const std::string&)> generate_preconditions_check_distance,
+    const std::string &orig_offset = "0"
   ) const override;
 
   std::vector<std::string> generate_load_widening(
@@ -140,6 +141,9 @@ public:
     const std::string &orig_var_name,
     const std::string &orig_type,
     const std::string &view_offset,
-    const std::string &access_index
+    const std::string &access_index,
+    std::function<std::vector<std::string>(const std::string&)> generate_preconditions_check_distance,
+  const std::string &distance,
+  const std::string &orig_offset
   ) const override;
 };

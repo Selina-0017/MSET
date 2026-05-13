@@ -20,14 +20,13 @@ module {
   func.func private @exit(%arg0: i32) -> ()
   memref.global @origin : memref<8xi8> = dense<170>
 
-  func.func @f() -> i32 {
+  func.func @f() -> memref<8xi8> {
     %c0 = arith.constant 0 : index
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
     %idx = arith.constant 7 : index
     %c0xFF = arith.constant 255 : i8
-    %c0_i32 = arith.constant 0 : i32
     // locals
 
     %origin = memref.get_global @origin : memref<8xi8>
@@ -36,12 +35,13 @@ module {
     memref.store %c0xFF, %origin[%idx] : memref<8xi8>
     func.call @exit(%test_success) : (i32) -> ()
 
-    return %c0_i32 : i32
+    %c0_memref = memref.alloca() : memref<8xi8>
+    return %c0_memref : memref<8xi8>
   }
 
   func.func @main() -> i32 {
     %c0_i32 = arith.constant 0 : i32
-    %ret = func.call @f() : () -> i32
+    %ret = func.call @f() : () -> memref<8xi8>
 
     return %c0_i32 : i32
   }
