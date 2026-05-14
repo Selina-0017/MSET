@@ -29,7 +29,6 @@ module {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
-      %__base = arith.constant 1 : index
     // locals
 
     %origin = memref.alloc() : memref<8xi8>
@@ -41,21 +40,21 @@ module {
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>
     func.call @use(%use_val_origin) : (i8) -> ()
     
-    %is_valid = arith.cmpi sge, %distance_negated, %c0 : index
+    %is_valid = arith.cmpi sgt, %distance_negated, %c0 : index
     scf.if %is_valid {
       func.call @exit(%precond_fail) : (i32) -> ()
       scf.yield
     }
-    
-    scf.for %reach_index = %c0 to %distance_negated step %c1 {
+    %negadist_variant = arith.subi %c0, %distance_negated : index
+    scf.for %reach_index = %c0 to %negadist_variant step %c1 {
       %index = arith.subi %c0, %reach_index : index
-      %__idx = arith.addi %index, %__base : index
-      %val = memref.load %origin[%__idx] : memref<8xi8>
+      %val = memref.load %origin[%index] : memref<8xi8>
       func.call @use(%val) : (i8) -> ()
     }
+    
     scf.for %i = %c0 to %c8 step %c1 {
-      %__idx = arith.addi %i, %__base : index
-      %val = memref.load %origin[%__idx] : memref<8xi8>
+      %idx = arith.addi %i, %distance_negated : index
+      %val = memref.load %origin[%idx] : memref<8xi8>
       func.call @use(%val) : (i8) -> ()
     }
     func.call @exit(%test_success) : (i32) -> ()

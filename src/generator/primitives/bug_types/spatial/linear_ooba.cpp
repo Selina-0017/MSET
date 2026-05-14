@@ -92,9 +92,9 @@ std::vector<std::shared_ptr<OriginTargetCodeCanvas>> LinearOOBA::generate(
       auto origin_target_canvas_copy = std::make_shared<OriginTargetCodeCanvas>(*origin_target_canvas);
       ssize_t static_dist = origin_target_canvas->get_distance_static_value();
       std::string origin_offset = static_dist > 0 ? "0" : std::to_string(std::abs(static_dist));
-      if (!origin_target_canvas->is_target_allocated()) {
-        origin_offset = std::to_string(static_dist - static_cast<ssize_t>(origin_target_canvas_copy->get_origin_size()) + 1);
-      }
+      // if (!origin_target_canvas->is_target_allocated()) {
+      //   origin_offset = std::to_string(static_dist - static_cast<ssize_t>(origin_target_canvas_copy->get_origin_size()) + 1);
+      // }
       std::string target_offset = static_dist > 0 ? std::to_string(static_dist) : "0";
       std::vector<AccessLocation::SplitAccess> reach_target_codes;
       if (!distance_statically_known)

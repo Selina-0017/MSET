@@ -49,7 +49,7 @@ module {
     func.call @use(%use_val_origin) : (i8) -> ()
     %read_value_54 = memref.alloca() : memref<1024xi8>
     
-    %is_valid = arith.cmpi sle, %distance, %c0 : index
+    %is_valid = arith.cmpi slt, %distance, %c0 : index
     scf.if %is_valid {
       func.call @exit(%precond_fail) : (i32) -> ()
       scf.yield

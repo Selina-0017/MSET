@@ -39,7 +39,7 @@ module {
     %distance = arith.subi %ptr_target, %ptr_origin : index
     %distance_negated = arith.subi %c0, %distance : index
     
-    %is_valid = arith.cmpi sle, %distance, %c0 : index
+    %is_valid = arith.cmpi slt, %distance, %c0 : index
     scf.if %is_valid {
       func.call @exit(%precond_fail) : (i32) -> ()
       scf.yield

@@ -36,7 +36,7 @@ std::vector<std::string> Underflow::generate_preconditions_check_distance( const
   // }
   lines = {
     appendline,
-    "%is_valid = arith.cmpi sge, %" + dist + ", %c0 : index",
+    "%is_valid = arith.cmpi sgt, %" + dist + ", %c0 : index",
     "scf.if %is_valid {",
     "  func.call @exit(%precond_fail) : (i32) -> ()",
     "  scf.yield",

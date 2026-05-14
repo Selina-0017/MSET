@@ -35,7 +35,7 @@ std::vector<std::string> Overflow::generate_preconditions_check_distance( const 
   // }
   lines = {
     appendline,
-    "%is_valid = arith.cmpi sle, %" + dist + ", %c0 : index",
+    "%is_valid = arith.cmpi slt, %" + dist + ", %c0 : index",
     "scf.if %is_valid {",
     "  func.call @exit(%precond_fail) : (i32) -> ()",
     "  scf.yield",

@@ -35,7 +35,7 @@ module {
     %s_target = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
     %distance_negated = arith.subi %c0, %distance : index
     
-    %is_valid = arith.cmpi sge, %distance, %c0 : index
+    %is_valid = arith.cmpi sgt, %distance, %c0 : index
     scf.if %is_valid {
       func.call @exit(%precond_fail) : (i32) -> ()
       scf.yield

@@ -36,8 +36,8 @@ module {
     }
 
     %distance_negated = arith.subi %c0, %distance : index
-    
-    scf.for %reach_index = %c0 to %c0 step %c1 {
+    %negadist_variant = arith.subi %c0, %c0 : index
+    scf.for %reach_index = %c0 to %negadist_variant step %c1 {
       %index = arith.subi %c0, %reach_index : index
       memref.store %c0xFF, %origin[%index] : memref<8xi8>
     }

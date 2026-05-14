@@ -49,7 +49,7 @@ module {
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_s_origin) : (i8) -> ()
     
-    %is_valid = arith.cmpi sge, %distance_negated, %c0 : index
+    %is_valid = arith.cmpi sgt, %distance_negated, %c0 : index
     scf.if %is_valid {
       func.call @exit(%precond_fail) : (i32) -> ()
       scf.yield
@@ -59,8 +59,10 @@ module {
       %index = arith.subi %c0, %reach_index : index
       memref.store %c0xFF, %s_origin[%index] : memref<8xi8, strided<[1], offset: 0>>
     }
+    %negadist_variant2 = arith.subi %c0, %distance_negated : index
     scf.for %i = %c0 to %c8 step %c1 {
-      memref.store %c0xFF, %s_origin[%i] : memref<8xi8, strided<[1], offset: 0>>
+      %idx = arith.addi %i, %negadist_variant2 : index
+      memref.store %c0xFF, %s_origin[%idx] : memref<8xi8, strided<[1], offset: 0>>
     }
     func.call @exit(%test_success) : (i32) -> ()
 
