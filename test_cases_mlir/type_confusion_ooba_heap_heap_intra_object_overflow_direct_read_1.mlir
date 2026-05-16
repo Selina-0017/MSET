@@ -28,6 +28,7 @@ module {
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     %c11 = arith.constant 11 : index
     %c2 = arith.constant 2 : index
     %c4 = arith.constant 4 : index
@@ -43,7 +44,6 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xBB, %s_target[%i] : memref<8xi8, strided<[1], offset: 8>>
     }
-    %distance_negated = arith.subi %c0, %distance : index
     
     %is_valid = arith.cmpi slt, %distance, %c0 : index
     scf.if %is_valid {

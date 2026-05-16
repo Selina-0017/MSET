@@ -25,6 +25,7 @@ module {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     %c1 = arith.constant 1 : index
     %c0xFF = arith.constant 255 : i8
     %c8 = arith.constant 8 : index
@@ -32,7 +33,6 @@ module {
 
     %origin = memref.get_global @origin : memref<8xi8>
 
-    %distance_negated = arith.subi %c0, %distance : index
     %negadist_variant = arith.subi %c0, %c0 : index
     scf.for %reach_index = %c0 to %negadist_variant step %c1 {
       %index = arith.subi %c0, %reach_index : index

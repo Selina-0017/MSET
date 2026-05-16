@@ -27,6 +27,7 @@ module {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     %c0xFF = arith.constant 255 : i8
     // locals
 
@@ -35,7 +36,6 @@ module {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
 
-    %distance_negated = arith.subi %c0, %distance : index
     
     scf.for %reach_index = %c0 to %c0 step %c1 {
       memref.store %c0xFF, %origin[%reach_index] : memref<8xi8>

@@ -41,7 +41,8 @@ module {
     %ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
     %ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
     %distance = arith.subi %ptr_target, %ptr_origin : index
-    %distance_negated = arith.subi %c0, %distance : index
+    %temp = arith.subi %ptr_origin, %ptr_target : index
+    %distance_negated = arith.subi %c0, %temp : index
     %use_val_target = memref.load %target[%c0] : memref<8xi8>
     func.call @use(%use_val_target) : (i8) -> ()
     %use_val_origin = memref.load %origin[%c0] : memref<8xi8>

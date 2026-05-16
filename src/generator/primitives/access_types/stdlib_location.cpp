@@ -175,10 +175,10 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_index(
   }
   std::string dist = (is_number(distance) && std::stoll(distance) == 0) ? "c" + distance : distance;
   std::string negadist_val;
-  if(distance.find("negated") != std::string::npos && needs_strided) {
-    dist = "negadist_variant";
-    negadist_val = "%" + dist + " = arith.subi %c0, %" + distance + " : index";
-  }
+  // if(distance.find("negated") != std::string::npos && needs_strided) {
+  //   dist = "negadist_variant";
+  //   negadist_val = "%" + dist + " = arith.subi %c0, %" + distance + " : index";
+  // }
 
   if (is_a<ReadAction>(action))
   {

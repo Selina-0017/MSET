@@ -65,7 +65,8 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > InterObject::generate(
     {
     // "%distance = arith.select %is_pos, %diff, %minus_diff : index",
     "%distance = arith.subi %ptr_target, %ptr_origin : index",
-    "%distance_negated = arith.subi %c0, %distance : index"
+    "%temp = arith.subi %ptr_origin, %ptr_target : index",
+    "%distance_negated = arith.subi %c0, %temp : index"
     }
   );
 
@@ -92,7 +93,8 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > InterObject::generate(
   origin_canvas->add_locals({
     // "%distance = arith.select %is_pos, %diff, %minus_diff : index",
     "%distance = arith.subi %ptr_target, %ptr_origin : index",
-    "%distance_negated = arith.subi %c0, %distance : index"
+    "%temp = arith.subi %ptr_origin, %ptr_target : index",
+    "%distance_negated = arith.subi %c0, %temp : index"
   });
 
   variant = std::make_shared<OriginTargetCodeCanvas>( origin_canvas, target_size, origin_size, "target", "origin", distance, distance_negated );

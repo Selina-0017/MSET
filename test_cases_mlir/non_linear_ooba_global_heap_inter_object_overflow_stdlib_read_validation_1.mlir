@@ -36,7 +36,8 @@ module {
     %ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
     %ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
     %distance = arith.subi %ptr_target, %ptr_origin : index
-    %distance_negated = arith.subi %c0, %distance : index
+    %temp = arith.subi %ptr_origin, %ptr_target : index
+    %distance_negated = arith.subi %c0, %temp : index
 
     %read_value_355 = memref.alloca() : memref<8xi8>
     %src_slice = memref.subview %target[%c0][8][1] : memref<8xi8> to memref<8xi8, strided<[1], offset: ?>>

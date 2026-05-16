@@ -25,13 +25,13 @@ module {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     // locals
 
     %origin = memref.get_global @origin : memref<8xi8>
 
-    %distance_negated = arith.subi %c0, %distance : index
     scf.for %j = %c0 to %c8 step %c1 {
       %idx = arith.addi %j, %c0 : index
       %val = memref.load %origin[%idx] : memref<8xi8>

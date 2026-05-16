@@ -42,7 +42,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > NonObject::generate(
     "%distance = arith.constant " + std::to_string(distance_up) + " : index"
   );
   origin_canvas->add_to_f_body(
-    "%distance_negated = arith.subi %c0, %distance : index"
+    "%distance_negated = arith.constant " + std::to_string(distance_up) + " : index"
   );
   origin_canvas->set_lifetime_pos(origin_canvas->get_current_pos_in_f());
   auto variant = std::make_shared<OriginTargetCodeCanvas>(

@@ -30,6 +30,7 @@ module {
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     // locals
 
     %s = memref.alloca() : memref<16xi8>
@@ -42,7 +43,6 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xBB, %s_origin[%i] : memref<8xi8, strided<[1], offset: 8>>
     }
-    %distance_negated = arith.subi %c0, %distance : index
     %use_val_s_target = memref.load %s_target[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_s_target) : (i8) -> ()
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 8>>

@@ -24,6 +24,7 @@ module {
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     %c0xFF = arith.constant 255 : i8
@@ -33,7 +34,6 @@ module {
     %s = memref.get_global @s : memref<16xi8>
     %s_target = memref.subview %s[0][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 0>>
     %s_origin = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
-    %distance_negated = arith.subi %c0, %distance : index
     
     %is_valid = arith.cmpi sgt, %distance, %c0 : index
     scf.if %is_valid {

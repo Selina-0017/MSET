@@ -27,6 +27,7 @@ module {
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     // locals
 
     %s = memref.alloca() : memref<16xi8>
@@ -39,7 +40,6 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xBB, %s_target[%i] : memref<8xi8, strided<[1], offset: 8>>
     }
-    %distance_negated = arith.subi %c0, %distance : index
     %read_value_322 = memref.alloca() : memref<8xi8>
     %src_slice = memref.subview %s_target[%c0][8][1] : memref<8xi8, strided<[1], offset: 8>> to memref<8xi8, strided<[1], offset: ?>>
     memref.copy %src_slice, %read_value_322 : memref<8xi8, strided<[1], offset: ?>> to memref<8xi8>

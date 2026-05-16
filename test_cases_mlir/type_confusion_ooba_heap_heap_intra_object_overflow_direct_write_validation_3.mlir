@@ -28,6 +28,7 @@ module {
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     %idx = arith.constant 7 : index
     %c0xFF = arith.constant 255 : i8
     // locals
@@ -42,7 +43,6 @@ module {
     scf.for %i = %c0 to %c8 step %c1 {
       memref.store %c0xBB, %s_origin[%i] : memref<8xi8, strided<[1], offset: 8>>
     }
-    %distance_negated = arith.subi %c0, %distance : index
     memref.store %c0xFF, %s_origin[%idx] : memref<8xi8, strided<[1], offset: 8>>
     func.call @exit(%test_success) : (i32) -> ()
 

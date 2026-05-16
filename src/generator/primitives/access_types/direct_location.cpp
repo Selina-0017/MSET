@@ -41,10 +41,10 @@ AccessLocation::SplitAccess DirectLocation::generate_split_aux_vars(
 
   std::string distance_expr = distance;
   std::string line = "";
-  if(needs_strided && distance.find("negated")!= std::string::npos){
-    distance_expr = "negadist_variant2";
-    line = "%" + distance_expr + " = arith.subi %c0, %" + distance + " : index";
-  }
+  // if(needs_strided && distance.find("negated")!= std::string::npos){
+  //   distance_expr = "negadist_variant2";
+  //   line = "%" + distance_expr + " = arith.subi %c0, %" + distance + " : index";
+  // }
 
   if (is_a<ReadAction>(action))
   {
@@ -363,7 +363,7 @@ AccessLocation::SplitAccess DirectLocation::generate_bulk_split_using_index(
   std::string dist = (is_number(distance) && std::stoll(distance) == 0) ? "c" + distance : distance;
   std::string stride_suffix = needs_strided ? ", strided<[1], offset: " + offset + ">>" : ">";
   std::string negadist_val;
-  if((distance.find("negated") != std::string::npos && needs_strided) || is_underflow) {
+  if(is_underflow) {
     negadist_val = "%negadist_variant = arith.subi %c0, %" + dist + " : index";
     dist = "negadist_variant";
   }

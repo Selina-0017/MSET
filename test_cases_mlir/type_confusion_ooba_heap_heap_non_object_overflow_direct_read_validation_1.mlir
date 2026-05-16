@@ -27,6 +27,7 @@ module {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     %idx = arith.constant 7 : index
     // locals
 
@@ -35,7 +36,6 @@ module {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
 
-    %distance_negated = arith.subi %c0, %distance : index
     %val = memref.load %origin[%idx] : memref<8xi8>
     func.call @use(%val) : (i8) -> ()
     func.call @exit(%test_success) : (i32) -> ()

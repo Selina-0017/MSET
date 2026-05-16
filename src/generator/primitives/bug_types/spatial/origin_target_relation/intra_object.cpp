@@ -45,7 +45,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > IntraObject::generate(
     "%distance = arith.constant " + std::to_string(distance_value) + " : index"
   );
   region_canvas->add_to_f_body(
-    "%distance_negated = arith.subi %c0, %distance : index"
+    "%distance_negated = arith.constant " + std::to_string(distance_value) + " : index"
   );
 
   auto variant = std::make_shared<OriginTargetCodeCanvas>(
@@ -66,7 +66,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > IntraObject::generate(
     "%distance = arith.constant " + std::to_string(std::abs(distance_value)) + " : index"
   );
   region_canvas->add_to_f_body(
-    "%distance_negated = arith.subi %c0, %distance : index"
+    "%distance_negated = arith.constant " + std::to_string(std::abs(distance_value)) + " : index"
   );
 
   variant = std::make_shared<OriginTargetCodeCanvas>(

@@ -27,6 +27,7 @@ module {
     %precond_fail = arith.constant 43 : i32
     %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     %big = arith.constant 536870912 : index
     // locals
 
@@ -35,7 +36,6 @@ module {
       memref.store %c0xAA, %origin[%i] : memref<8xi8>
     }
 
-    %distance_negated = arith.subi %c0, %distance : index
     
     %is_valid = arith.cmpi slt, %distance, %c0 : index
     scf.if %is_valid {

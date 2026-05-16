@@ -39,7 +39,8 @@ module {
     %ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
     %ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
     %distance = arith.subi %ptr_target, %ptr_origin : index
-    %distance_negated = arith.subi %c0, %distance : index
+    %temp = arith.subi %ptr_origin, %ptr_target : index
+    %distance_negated = arith.subi %c0, %temp : index
     
     %is_valid = arith.cmpi sgt, %distance, %c0 : index
     scf.if %is_valid {

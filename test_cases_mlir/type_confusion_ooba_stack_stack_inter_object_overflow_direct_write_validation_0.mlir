@@ -40,7 +40,8 @@ module {
     %ptr_origin = memref.extract_aligned_pointer_as_index %origin : memref<8xi8> -> index
     %ptr_target = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index
     %distance = arith.subi %ptr_target, %ptr_origin : index
-    %distance_negated = arith.subi %c0, %distance : index
+    %temp = arith.subi %ptr_origin, %ptr_target : index
+    %distance_negated = arith.subi %c0, %temp : index
     scf.for %j = %c0 to %c8 step %c1 {
       %idx = arith.addi %j, %c0 : index
       memref.store %c0xFF, %target[%idx] : memref<8xi8>

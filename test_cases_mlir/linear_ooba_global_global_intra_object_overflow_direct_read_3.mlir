@@ -27,6 +27,7 @@ module {
     %test_success = arith.constant 42 : i32
     %c0 = arith.constant 0 : index
     %distance = arith.constant 9 : index
+    %distance_negated = arith.constant 9 : index
     %c1 = arith.constant 1 : index
     %c8 = arith.constant 8 : index
     // locals
@@ -35,7 +36,6 @@ module {
     %s = memref.get_global @s : memref<16xi8>
     %s_target = memref.subview %s[0][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 0>>
     %s_origin = memref.subview %s[8][8][1] : memref<16xi8> to memref<8xi8, strided<[1], offset: 8>>
-    %distance_negated = arith.subi %c0, %distance : index
     %use_val_s_target = memref.load %s_target[%c0] : memref<8xi8, strided<[1], offset: 0>>
     func.call @use(%use_val_s_target) : (i8) -> ()
     %use_val_s_origin = memref.load %s_origin[%c0] : memref<8xi8, strided<[1], offset: 8>>
@@ -46,14 +46,14 @@ module {
       func.call @exit(%precond_fail) : (i32) -> ()
       scf.yield
     }
-    %negadist_variant = arith.subi %c0, %distance_negated : index
-    scf.for %reach_index = %c0 to %negadist_variant step %c1 {
+    
+    scf.for %reach_index = %c0 to %distance_negated step %c1 {
       %val = memref.load %s_origin[%reach_index] : memref<8xi8, strided<[1], offset: 8>>
       func.call @use(%val) : (i8) -> ()
     }
-    %negadist_variant2 = arith.subi %c0, %distance_negated : index
+    
     scf.for %i = %c0 to %c8 step %c1 {
-      %idx = arith.addi %i, %negadist_variant2 : index
+      %idx = arith.addi %i, %distance_negated : index
       %val = memref.load %s_origin[%idx] : memref<8xi8, strided<[1], offset: 8>>
       func.call @use(%val) : (i8) -> ()
     }
