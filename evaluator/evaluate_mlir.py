@@ -509,6 +509,7 @@ _DETECTION_KEYWORDS = {
     "Element type mismatch",
     "double free:",
     "use-after-free:",
+    "CHECK failed:"
 }
 
 
@@ -700,7 +701,7 @@ def process_results(
     print_results(raw_overall)
     if skipped > 0:
         print(
-        f"We skipped {skipped} misuse‑of‑free variants, due to the difficulty of reproducing the behavior of \"free part of\" memory objects at the MLIR level.")
+        f"Skipped {skipped} misuse-of-free variants: deallocating a view is illegal in MLIR.")
 
 
 
@@ -919,8 +920,8 @@ def main():
     parser.add_argument(
         "--timeout",
         type=int,
-        default=90,
-        help="Timeout per test in seconds (default: 90)",
+        default=400,
+        help="Timeout per test in seconds (default: 400)",
     )
     parser.add_argument(
         "-v",

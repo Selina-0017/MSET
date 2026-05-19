@@ -254,16 +254,7 @@ AccessLocation::SplitAccess StdlibLocation::generate_bulk_split_using_aux_ptr(
 {
   SplitAccess split_access;
   std::string dist = (is_number(distance) && std::stoll(distance) == 0) ? "c" + distance : distance;
-  bool is_underflow = false;
   std::vector<std::string> counter_update = generate_counter_update("reach_index");
-  for (const auto& line : counter_update)
-  {
-    if (line.find("subi") != std::string::npos)
-    {
-      is_underflow = true;
-      break;
-    }
-  }
 
   if (is_a<ReadAction>(action))
   {
