@@ -163,8 +163,6 @@ def build_phase2_pipeline(asan: bool = False, crisp: bool = False) -> str:
             "convert-complex-to-llvm",
         ]
     )
-    if crisp:
-        passes.append("convert-asan-globals-to-llvm")
     passes.extend(
         [
             "reconcile-unrealized-casts",

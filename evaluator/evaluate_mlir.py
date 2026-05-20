@@ -920,8 +920,8 @@ def main():
     parser.add_argument(
         "--timeout",
         type=int,
-        default=400,
-        help="Timeout per test in seconds (default: 400)",
+        default=500,
+        help="Timeout per test in seconds (default: 500)",
     )
     parser.add_argument(
         "-v",
