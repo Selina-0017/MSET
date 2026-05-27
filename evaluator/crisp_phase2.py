@@ -293,34 +293,24 @@ def compile_llvmir_to_object(
     sanitize_address function attribute and runs the LLVM ASan instrumentation
     pass (inline shadow checks by default).
     """
-    if cfg.asan_enabled:
-        cmd = [
-            "clang",
-            f"-O{opt_level}",
-            "-fsanitize=address",
-            "-fno-omit-frame-pointer",
-        ]
-        if cfg.tag == "asan-outline":
-            cmd.append("-fsanitize-address-outline-instrumentation")
-        elif cfg.tag == "asan-opt":
-            cmd.extend([
-                "-fsanitize-address-outline-instrumentation",
-                "-mllvm", "-asan-opt=false",
-            ])
+    cmd = [
+        "clang",
+        f"-O{opt_level}",
+        "-fsanitize=address",
+        "-fno-omit-frame-pointer",
+    ]
+    if cfg.tag == "asan-outline":
+        cmd.append("-fsanitize-address-outline-instrumentation")
+    elif cfg.tag == "asan-opt":
         cmd.extend([
-            "-c",
-            str(llvm_ir_path),
-            "-o", str(obj_path),
+            "-fsanitize-address-outline-instrumentation",
+            "-mllvm", "-asan-opt=false",
         ])
-    else:
-        cmd = [
-            str(LLC),
-            str(llvm_ir_path),
-            f"-O{opt_level}",
-            "-o", str(obj_path),
-            "--relocation-model=pic",
-            "--filetype=obj",
-        ]
+    cmd.extend([
+        "-c",
+        str(llvm_ir_path),
+        "-o", str(obj_path),
+    ])
     run_cmd(cmd)
 
 
