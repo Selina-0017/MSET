@@ -68,6 +68,10 @@ ASAN_OPT_CONFIG = BenchConfig(
     tag="asan-opt", asan_enabled=True, crisp_enabled=False, needs_asan_rt=True
 )
 
+BASE_CONFIG = BenchConfig(
+    tag="base", asan_enabled=False, crisp_enabled=False, needs_asan_rt=False
+)
+
 
 def run_cmd(cmd: list, cwd=None, env=None, check=True) -> subprocess.CompletedProcess:
     """Run a shell command and optionally check for errors."""
@@ -296,16 +300,19 @@ def compile_llvmir_to_object(
     cmd = [
         "clang",
         f"-O{opt_level}",
-        "-fsanitize=address",
-        "-fno-omit-frame-pointer",
     ]
-    if cfg.tag == "asan-outline":
-        cmd.append("-fsanitize-address-outline-instrumentation")
-    elif cfg.tag == "asan-opt":
+    if cfg.asan_enabled or cfg.tag =="crisp":
         cmd.extend([
-            "-fsanitize-address-outline-instrumentation",
-            "-mllvm", "-asan-opt=false",
+            "-fsanitize=address",
+            "-fno-omit-frame-pointer",
         ])
+        if cfg.tag == "asan-outline":
+            cmd.append("-fsanitize-address-outline-instrumentation")
+        elif cfg.tag == "asan-opt":
+            cmd.extend([
+                "-fsanitize-address-outline-instrumentation",
+                "-mllvm", "-asan-opt=false",
+            ])
     cmd.extend([
         "-c",
         str(llvm_ir_path),
@@ -380,11 +387,12 @@ def main():
     )
     parser.add_argument(
         "--config",
-        choices=["crisp", "asan0", "asan-outline", "asan-opt"],
+        choices=["crisp", "asan0", "asan-outline", "asan-opt", "base"],
         default="crisp",
         help="Select compilation config: 'crisp' for CRISP, 'asan0' for standard ASan, "
              "'asan-outline' for ASan with outline instrumentation, "
-             "'asan-opt' for ASan with outline instrumentation and opt disabled.",
+             "'asan-opt' for ASan with outline instrumentation and opt disabled, "
+             "'base' for plain clang without AddressSanitizer.",
     )
     parser.add_argument(
         "--keep",
@@ -422,6 +430,7 @@ def main():
         "asan0": ASAN0_CONFIG,
         "asan-outline": ASAN_OUTLINE_CONFIG,
         "asan-opt": ASAN_OPT_CONFIG,
+        "base": BASE_CONFIG,
     }
     cfg = config_map[args.config]
 

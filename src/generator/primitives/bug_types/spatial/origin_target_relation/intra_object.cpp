@@ -63,7 +63,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > IntraObject::generate(
   static_dist = -(static_cast<ssize_t>(target_size));
   distance_value = -(static_cast<ssize_t>(target_size) + 1);
   region_canvas->add_to_f_body(
-    "%distance = arith.constant " + std::to_string(std::abs(distance_value)) + " : index"
+    "%distance = arith.constant " + std::to_string(distance_value) + " : index"
   );
   region_canvas->add_to_f_body(
     "%distance_negated = arith.constant " + std::to_string(std::abs(distance_value)) + " : index"

@@ -117,7 +117,9 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_unused_m
   std::vector<std::string> post_dealloc = {
     "%c0_v = arith.constant 0 : index",
     "%c8_v = arith.constant 8 : index",
-    "%view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>"
+    "%view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>",
+    "%value = memref.load %view_target[%c0] : memref<?xi8>",
+    "func.call @use(%value) : (i8) -> ()"
   };
   auto index = region_canvas->add_at(region_canvas->get_deallocation_pos() + 1, post_dealloc, "    ");
 
@@ -200,7 +202,7 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
   });
 
   std::vector<std::string> allocation_for = heap_memory_region->generate_reallocation("new_reallocated", 8, true, "    ");
-  reused_region_canvas_repeat->add_during_lifetime({ //TODO: 这里替换为scf.for的写法
+  reused_region_canvas_repeat->add_during_lifetime({ 
     "%reallocated_for, %not_matched_for = scf.for %counter = %c0 to %c_max step %c1",
     "    iter_args(%reallocated_iter = %reallocated, %not_matched_iter = %ctrue_loop)",
     "    -> (memref<8xi8>, i1) {",
@@ -316,7 +318,7 @@ std::vector< std::shared_ptr<RegionCodeCanvas>>UseAfterStar::_generate_reused_me
   reused_region_canvas_repeated->add_during_lifetime(access_type_code.to_lines());
   reused_region_canvas_repeated->add_during_lifetime("func.call @exit(%test_success) : (i32) -> ()");
   reused_region_canvas_repeated->add_at(reused_region_canvas_repeated->get_other_f_call_pos(),
-    std::vector<std::string>{//TODO: 这里替换为scf.for的写法
+    std::vector<std::string>{
     "%precond_fail = arith.constant 43 : i32",
       "%c0 = arith.constant 0 : index",
       "%c1 = arith.constant 1 : index",

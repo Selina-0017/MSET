@@ -54,7 +54,7 @@ std::vector< std::shared_ptr<OriginTargetCodeCanvas> > NonObject::generate(
   variants.push_back(variant);
   
   // underflow variant: target before origin
-  ssize_t distance_down = static_cast<ssize_t>(origin_size) + 1;
+  ssize_t distance_down = - (static_cast<ssize_t>(origin_size) + 1);
   origin_canvas->add_to_f_body(
     "%underflow_dist = arith.constant " + std::to_string(distance_down) + " : index"
   );

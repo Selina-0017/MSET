@@ -906,7 +906,7 @@ def main():
     )
     parser.add_argument(
         "--config",
-        choices=["crisp", "asan0", "asan-outline", "asan-opt"],
+        choices=["crisp", "asan0", "asan-outline", "asan-opt", "base"],
         default="crisp",
         help="Compilation config passed to crisp_phase2.py (default: crisp)",
     )

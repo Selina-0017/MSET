@@ -36,6 +36,8 @@ module {
     memref.dealloc %target : memref<8xi8>
     %c0_memref = memref.alloca() : memref<8xi8>
     %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
+    %value = memref.load %view_target[%c0] : memref<?xi8>
+    func.call @use(%value) : (i8) -> ()
     %read_value_44 = memref.alloca() : memref<8xi8>
     memref.copy %view_target, %read_value_44 : memref<?xi8> to memref<8xi8>
     %use_val_read_value_44 = memref.load %read_value_44[%c0] : memref<8xi8>

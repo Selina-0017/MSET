@@ -30,7 +30,7 @@ module {
     %test_success = arith.constant 42 : i32
     %distance = arith.constant 9 : index
     %distance_negated = arith.constant 9 : index
-    %underflow_dist = arith.constant 9 : index
+    %underflow_dist = arith.constant -9 : index
     %c0xFF = arith.constant 255 : i8
     // locals
 

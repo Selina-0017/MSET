@@ -27,7 +27,7 @@ module {
     %c8 = arith.constant 8 : index
     %c0xAA = arith.constant 170 : i8
     %c0xBB = arith.constant 187 : i8
-    %distance = arith.constant 9 : index
+    %distance = arith.constant -9 : index
     %distance_negated = arith.constant 9 : index
     // locals
 

@@ -31,6 +31,8 @@ module {
     memref.dealloc %pointer_to_double_free : memref<10xi8>
     memref.store %c0_i8_df, %pointer_to_double_free[%c8_df] : memref<10xi8> // use-after-free for heap metadata corruption
     memref.dealloc %pointer_to_double_free : memref<10xi8> // double free
+    %value = memref.load %pointer_to_double_free[%c0] : memref<10xi8> // use-after-free for heap metadata corruption
+    func.call @use(%value) : (i8) -> ()
     %pointer_to_use = memref.alloc() : memref<8xi8> // allocate a new object
     
   %read_value_0 = memref.alloca() : memref<8xi8>

@@ -129,7 +129,7 @@ exit code   (42=成功, 43=预条件失败, 0=未检测, 其他=检测到错误)
 |------|------|--------|------|
 | `input_mlir` | 位置参数 | 必填 | 输入的 bufferized MLIR 文件路径 |
 | `output_dir` | 位置参数 | `./<stem>_output` | 输出目录，存放中间文件和可执行文件 |
-| `--config` | 可选 | `crisp` | 编译配置：`crisp`、`asan0`、`asan-outline`、`asan-opt` |
+| `--config` | 可选 | `crisp` | 编译配置：`crisp`、`asan0`、`asan-outline`、`asan-opt`、`base` |
 | `--keep` | 开关 | `False` | 保留中间文件（LLVM dialect、LLVM IR、object、可执行文件） |
 | `--opt` | 可选 | `0` | 优化级别（`0/1/2/3`），传给 llc / clang |
 | `--debug-ir` | 开关 | 隐藏 | 打印 `--mlir-print-ir-after-all`（调试用，参数隐藏） |

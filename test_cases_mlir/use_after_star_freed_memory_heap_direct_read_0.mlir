@@ -36,6 +36,8 @@ module {
     memref.dealloc %target : memref<8xi8>
     %c0_memref = memref.alloca() : memref<8xi8>
     %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
+    %value = memref.load %view_target[%c0] : memref<?xi8>
+    func.call @use(%value) : (i8) -> ()
     scf.for %i = %c0 to %c8 step %c1 {
       %val = memref.load %view_target[%i] : memref<?xi8>
       func.call @use(%val) : (i8) -> ()
