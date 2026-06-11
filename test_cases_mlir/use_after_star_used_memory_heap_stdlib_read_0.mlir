@@ -24,6 +24,7 @@ module {
 
     %target = memref.alloc() : memref<8xi8>
     %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
+    memref.dealloc %target : memref<8xi8>
     %reallocated = memref.alloc() : memref<8xi8>
 
   %target_ptr = memref.extract_aligned_pointer_as_index %target : memref<8xi8> -> index

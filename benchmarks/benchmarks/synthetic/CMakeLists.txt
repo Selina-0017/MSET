@@ -1,0 +1,40 @@
+cmake_minimum_required(VERSION 3.18)
+project(bingpufuzz_synthetic LANGUAGES CXX CUDA)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+
+add_executable(shared_memory shared_memory.cu)
+set_target_properties(shared_memory PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(allocator_order allocator_order.cu)
+set_target_properties(allocator_order PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(chunk_cat_pattern chunk_cat_pattern.cu)
+set_target_properties(chunk_cat_pattern PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(llama_kv_pattern llama_kv_pattern.cu)
+set_target_properties(llama_kv_pattern PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(scaled_mm_rowwise_pattern scaled_mm_rowwise_pattern.cu)
+set_target_properties(scaled_mm_rowwise_pattern PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(bgmv_tile_pattern bgmv_tile_pattern.cu)
+set_target_properties(bgmv_tile_pattern PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(llama_copy_override_pattern llama_copy_override_pattern.cu)
+set_target_properties(llama_copy_override_pattern PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(mla_concat_threshold_pattern mla_concat_threshold_pattern.cu)
+set_target_properties(mla_concat_threshold_pattern PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(multimargin_target_pattern multimargin_target_pattern.cu)
+set_target_properties(multimargin_target_pattern PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(qo_indptr_overflow_pattern qo_indptr_overflow_pattern.cu)
+set_target_properties(qo_indptr_overflow_pattern PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+add_executable(varlen_metadata_pattern varlen_metadata_pattern.cu)
+set_target_properties(varlen_metadata_pattern PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

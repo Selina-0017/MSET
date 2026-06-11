@@ -19,7 +19,7 @@ module {
     %c8_v = arith.constant 8 : index
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
-  %c_max = arith.constant 1000000 : index
+  %c_max = arith.constant 1000000000 : index
   %ctrue_loop = arith.constant 1 : i1
       %c8 = arith.constant 8 : index
       %c0xAA = arith.constant 170 : i8
@@ -30,6 +30,7 @@ module {
 
     %target = memref.alloc() : memref<8xi8>
     %view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>
+    memref.dealloc %target : memref<8xi8>
     %reallocated = memref.alloc() : memref<8xi8>
 
   %reallocated_for, %not_matched_for = scf.for %counter = %c0 to %c_max step %c1

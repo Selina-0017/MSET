@@ -1,0 +1,158 @@
+(.venv) origin@LAPTOP-1o1:~/MSET$ python evaluator/evaluate_mlir.py  --config asan0 -v
+Found 212 test cases, 1076 variants.
+120 misuse‑of‑free variants skipped
+Total work items: 1076
+For Intra-Object Linear OOBA Overflow Stdlib Read Global Global, the overall result is UNDETECTED
+For Intra-Object Linear OOBA Overflow Stdlib Write Global Global, the overall result is UNDETECTED
+For Intra-Object Linear OOBA Underflow Direct Read Global Global, the overall result is UNDETECTED
+For Intra-Object Linear OOBA Underflow Direct Write Global Global, the overall result is UNDETECTED
+For Non-Object Linear OOBA Underflow Direct Read Global Global, the overall result is UNDETECTED
+For Non-Object Linear OOBA Underflow Direct Write Global Global, the overall result is UNDETECTED
+For Inter-Object Linear OOBA Underflow Direct Read Global Heap, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Underflow Direct Write Global Heap, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Underflow Direct Read Global Stack, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Underflow Direct Write Global Stack, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Overflow Direct Read Heap Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Overflow Direct Write Heap Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Overflow Stdlib Read Heap Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Overflow Stdlib Write Heap Global, the overall result is PRECONDITIONS FAILED
+For Intra-Object Linear OOBA Overflow Stdlib Read Heap Heap, the overall result is UNDETECTED
+For Intra-Object Linear OOBA Overflow Stdlib Write Heap Heap, the overall result is UNDETECTED
+For Inter-Object Linear OOBA Overflow Direct Read Stack Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Overflow Direct Write Stack Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Overflow Stdlib Read Stack Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Linear OOBA Overflow Stdlib Write Stack Global, the overall result is PRECONDITIONS FAILED
+For Intra-Object Linear OOBA Overflow Stdlib Read Stack Stack, the overall result is UNDETECTED
+For Intra-Object Linear OOBA Overflow Stdlib Write Stack Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Read Global Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Write Global Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Read Global Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Write Global Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Read Global Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Write Global Global, the overall result is UNDETECTED
+For Intra-Object Non-Linear OOBA Underflow Direct Read Global Global, the overall result is UNDETECTED
+For Intra-Object Non-Linear OOBA Underflow Direct Write Global Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Read Global Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Write Global Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Read Global Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Write Global Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Read Global Heap, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Underflow Direct Write Global Heap, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Overflow Direct Read Global Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Write Global Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Read Global Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Write Global Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Read Global Stack, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Underflow Direct Write Global Stack, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Overflow Direct Read Heap Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Overflow Direct Write Heap Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Read Heap Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Write Heap Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Underflow Direct Read Heap Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Write Heap Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Read Heap Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Write Heap Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Read Heap Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Write Heap Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Read Heap Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Write Heap Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Read Heap Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Write Heap Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Read Heap Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Write Heap Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Read Heap Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Write Heap Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Read Stack Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Overflow Direct Write Stack Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Read Stack Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Write Stack Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Non-Linear OOBA Underflow Direct Read Stack Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Write Stack Global, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Read Stack Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Write Stack Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Read Stack Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Write Stack Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Read Stack Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Write Stack Heap, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Read Stack Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Direct Write Stack Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Read Stack Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Overflow Stdlib Write Stack Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Read Stack Stack, the overall result is UNDETECTED
+For Inter-Object Non-Linear OOBA Underflow Direct Write Stack Stack, the overall result is UNDETECTED
+For Intra-Object Type Confusion OOBA Overflow Direct Read Global Global, the overall result is UNDETECTED
+For Intra-Object Type Confusion OOBA Overflow Direct Write Global Global, the overall result is UNDETECTED
+For Inter-Object Type Confusion OOBA Overflow Direct Read Global Heap, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Write Global Heap, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Read Global Stack, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Write Global Stack, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Read Heap Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Write Heap Global, the overall result is PRECONDITIONS FAILED
+For Intra-Object Type Confusion OOBA Overflow Direct Read Heap Heap, the overall result is UNDETECTED
+For Intra-Object Type Confusion OOBA Overflow Direct Write Heap Heap, the overall result is UNDETECTED
+For Inter-Object Type Confusion OOBA Overflow Direct Read Heap Stack, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Write Heap Stack, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Read Stack Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Write Stack Global, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Read Stack Heap, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Write Stack Heap, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Read Stack Stack, the overall result is PRECONDITIONS FAILED
+For Inter-Object Type Confusion OOBA Overflow Direct Write Stack Stack, the overall result is PRECONDITIONS FAILED
+For Intra-Object Type Confusion OOBA Overflow Direct Read Stack Stack, the overall result is UNDETECTED
+For Intra-Object Type Confusion OOBA Overflow Direct Write Stack Stack, the overall result is UNDETECTED
+For Use-after-* Direct Read Heap (Re)used Memory, the overall result is PRECONDITIONS FAILED
+For Use-after-* Direct Write Heap (Re)used Memory, the overall result is PRECONDITIONS FAILED
+For Use-after-* Stdlib Read Heap (Re)used Memory, the overall result is PRECONDITIONS FAILED
+For Use-after-* Stdlib Write Heap (Re)used Memory, the overall result is PRECONDITIONS FAILED
+For Use-after-* Direct Read Stack (Re)used Memory, the overall result is PRECONDITIONS FAILED
+For Use-after-* Direct Write Stack (Re)used Memory, the overall result is PRECONDITIONS FAILED
+For Use-after-* Stdlib Read Stack (Re)used Memory, the overall result is PRECONDITIONS FAILED
+For Use-after-* Stdlib Write Stack (Re)used Memory, the overall result is PRECONDITIONS FAILED
+Evaluated 212 test cases, 622 variants.
+
+Temporal Bugs Distribution
+Category                 | Detection Rate | Precond Failed |   Detected | Undetected
+------------------------------------------------------------------------------------
+Overall                  |   100.00% (20) |     40.00% (8) | 60.00% (12) |  0.00% (0)
+Misuse-of-free           |            N/A |            N/A |        N/A |        N/A
+Double-free              |    100.00% (4) |      0.00% (0) | 100.00% (4) |  0.00% (0)
+Use-after-*              |   100.00% (16) |     50.00% (8) | 50.00% (8) |  0.00% (0)
+Heap                     |   100.00% (12) |     33.33% (4) | 66.67% (8) |  0.00% (0)
+Stack                    |    100.00% (8) |     50.00% (4) | 50.00% (4) |  0.00% (0)
+Global                   |            N/A |            N/A |        N/A |        N/A
+(Re)used Memory          |   100.00% (12) |     66.67% (8) | 33.33% (4) |  0.00% (0)
+Freed Memory             |    100.00% (8) |      0.00% (0) | 100.00% (8) |  0.00% (0)
+Stdlib                   |   100.00% (10) |     40.00% (4) | 60.00% (6) |  0.00% (0)
+Direct                   |   100.00% (10) |     40.00% (4) | 60.00% (6) |  0.00% (0)
+Read                     |   100.00% (10) |     40.00% (4) | 60.00% (6) |  0.00% (0)
+Write                    |   100.00% (10) |     40.00% (4) | 60.00% (6) |  0.00% (0)
+
+Spatial Bugs Distribution
+Category                 | Detection Rate | Precond Failed |   Detected | Undetected
+------------------------------------------------------------------------------------
+Overall                  |   68.75% (132) |    19.79% (38) | 48.96% (94) | 31.25% (60)
+Linear OOBA              |    88.89% (80) |    13.33% (12) | 75.56% (68) | 11.11% (10)
+Non-Linear OOBA          |    38.89% (28) |    16.67% (12) | 22.22% (16) | 61.11% (44)
+Type Confusion OOBA      |    80.00% (24) |    46.67% (14) | 33.33% (10) | 20.00% (6)
+Origin Heap              |    71.88% (46) |    18.75% (12) | 53.12% (34) | 28.12% (18)
+Origin Stack             |    71.88% (46) |    21.88% (14) | 50.00% (32) | 28.12% (18)
+Origin Global            |    62.50% (40) |    18.75% (12) | 43.75% (28) | 37.50% (24)
+Target Heap              |    68.75% (44) |     12.50% (8) | 56.25% (36) | 31.25% (20)
+Target Stack             |    68.75% (44) |    15.62% (10) | 53.12% (34) | 31.25% (20)
+Target Global            |    68.75% (44) |    31.25% (20) | 37.50% (24) | 31.25% (20)
+Non-Object               |    91.67% (22) |      0.00% (0) | 91.67% (22) |  8.33% (2)
+Intra-Object             |    61.90% (26) |      0.00% (0) | 61.90% (26) | 38.10% (16)
+Inter-Object             |    66.67% (84) |    30.16% (38) | 36.51% (46) | 33.33% (42)
+Overflow                 |    71.01% (98) |    21.74% (30) | 49.28% (68) | 28.99% (40)
+Underflow                |    62.96% (34) |     14.81% (8) | 48.15% (26) | 37.04% (20)
+Stdlib                   |    62.96% (34) |     14.81% (8) | 48.15% (26) | 37.04% (20)
+Direct                   |    71.01% (98) |    21.74% (30) | 49.28% (68) | 28.99% (40)
+Read                     |    68.75% (66) |    19.79% (19) | 48.96% (47) | 31.25% (30)
+Write                    |    68.75% (66) |    19.79% (19) | 48.96% (47) | 31.25% (30)
+Overall results:
+Detection rate: 71.70% (152 out of 212 test cases)
+Results for test cases:
+- Preconditions failed: 21.70% (46)
+- Detected: 50.00% (106)
+- Undetected: 28.30% (60)
+Skipped 120 misuse-of-free variants: deallocating a view is illegal in MLIR.

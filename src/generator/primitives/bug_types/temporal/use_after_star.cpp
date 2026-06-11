@@ -17,7 +17,7 @@
 #include "generator/primitives/regions/heap_region.h"
 #include "generator/primitives/regions/stack_region.h"
 
-const std::string max_reallocated_retries = "1000000";
+const std::string max_reallocated_retries = "1000000000";
 const std::string max_reallocated_retries_validation = "100";
 
 UseAfterStar::UseAfterStar():
@@ -162,7 +162,8 @@ std::vector< std::shared_ptr<RegionCodeCanvas> >UseAfterStar::_generate_reused_m
   region_canvas->add_locals({
     "%c0_v = arith.constant 0 : index",
     "%c8_v = arith.constant 8 : index",
-    "%view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>"
+    "%view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>",
+    "memref.dealloc %target : memref<8xi8>"
   });
 
   std::vector<std::string> access_type_code = access_location->generate(
@@ -252,10 +253,9 @@ std::vector< std::shared_ptr<RegionCodeCanvas>>UseAfterStar::_generate_reused_me
   std::shared_ptr<StackRegion> stack_memory_region = std::dynamic_pointer_cast<StackRegion>(memory_region);
   std::shared_ptr<StackRegion> stack_memory_region_simple = std::make_shared<StackRegion>(*stack_memory_region);
   std::shared_ptr<RegionCodeCanvas> region_canvas = stack_memory_region_simple->generate(std::make_shared<CodeCanvas>(code_simple), "target", 8, true);
-  region_canvas->add_global("memref.global @target_addr : memref<8xi8> = dense<170>");
   region_canvas->add_during_lifetime({
     "%test_success = arith.constant 42 : i32",
-"%c0_v = arith.constant 0 : index",
+    "%c0_v = arith.constant 0 : index",
     "%c8_v = arith.constant 8 : index",
     "%view_target = memref.view %target[%c0_v][%c8_v] : memref<8xi8> to memref<?xi8>"
   });
@@ -267,8 +267,7 @@ std::vector< std::shared_ptr<RegionCodeCanvas>>UseAfterStar::_generate_reused_me
   );
   reused_region_canvas_simple->add_during_lifetime({
     "%precond_fail = arith.constant 43 : i32",
-    "%target_addr = memref.get_global @target_addr : memref<8xi8>",
-    "%target_ptr = memref.extract_aligned_pointer_as_index %target_addr : memref<8xi8> -> index",
+    "%target_ptr = memref.extract_aligned_pointer_as_index %arg0 : memref<8xi8> -> index",
     "%realloc_ptr = memref.extract_aligned_pointer_as_index %reallocated : memref<8xi8> -> index",
     "%eq = arith.cmpi eq, %target_ptr, %realloc_ptr : index",
     "%ctrue = arith.constant 1 : i1",

@@ -1,0 +1,319 @@
+{
+  "suite": "synthetic-cuda-memory-bugs",
+  "version": 1,
+  "targets": [
+    {
+      "binary": "shared_memory",
+      "cases": [
+        {
+          "name": "shared_safe_copy",
+          "bugClass": "none",
+          "memorySpace": "shared",
+          "expectedSignal": "none",
+          "reproducer": "./shared_memory shared_safe_copy"
+        },
+        {
+          "name": "shared_negative_index_read",
+          "bugClass": "oobRead",
+          "memorySpace": "shared",
+          "expectedSignal": "oobRead",
+          "reproducer": "./shared_memory shared_negative_index_read",
+          "source": {
+            "kind": "synthetic",
+            "description": "Shared-memory negative-index read that stays stable as a compute-sanitizer missed signal candidate."
+          }
+        }
+      ]
+    },
+    {
+      "binary": "allocator_order",
+      "cases": [
+        {
+          "name": "safe_alloc_decode",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./allocator_order safe_alloc_decode",
+          "source": {
+            "kind": "github",
+            "description": "Safe early-reject control derived from the SGLang paged decode allocator bounds-check-order bug pattern.",
+            "url": "https://github.com/sgl-project/sglang/pull/22035"
+          }
+        },
+        {
+          "name": "late_bounds_check_oob",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./allocator_order late_bounds_check_oob",
+          "source": {
+            "kind": "github",
+            "description": "Derived from an SGLang paged decode allocator bug where the kernel reads free_pages before the host checks capacity.",
+            "url": "https://github.com/sgl-project/sglang/pull/22035"
+          }
+        }
+      ]
+    },
+    {
+      "binary": "chunk_cat_pattern",
+      "cases": [
+        {
+          "name": "safe_chunk_cat_read",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./chunk_cat_pattern safe_chunk_cat_read",
+          "source": {
+            "kind": "github",
+            "description": "Safe control for a small-allocation chunk_cat-style logical boundary read derived from PyTorch issue 122026.",
+            "url": "https://github.com/pytorch/pytorch/issues/122026"
+          }
+        },
+        {
+          "name": "logical_chunk_cat_oob_read",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./chunk_cat_pattern logical_chunk_cat_oob_read",
+          "source": {
+            "kind": "github",
+            "description": "Derived from PyTorch chunk_cat_cuda_kernel issue 122026, where an offset/index bug caused a logical read beyond the valid payload while staying inside the same allocation.",
+            "url": "https://github.com/pytorch/pytorch/issues/122026"
+          }
+        }
+      ]
+    },
+    {
+      "binary": "llama_kv_pattern",
+      "cases": [
+        {
+          "name": "safe_llama_f16_read",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./llama_kv_pattern safe_llama_f16_read",
+          "source": {
+            "kind": "github",
+            "description": "Safe control for an F16 boundary-read pattern derived from llama.cpp issue 8798.",
+            "url": "https://github.com/ggml-org/llama.cpp/issues/8798"
+          }
+        },
+        {
+          "name": "llama_f16_padding_oob_read",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./llama_kv_pattern llama_f16_padding_oob_read",
+          "source": {
+            "kind": "github",
+            "description": "Derived from llama.cpp issue 8798, where an F16 DMMV/KV-padding boundary bug caused an invalid global read near the end of an allocation.",
+            "url": "https://github.com/ggml-org/llama.cpp/issues/8798"
+          }
+        }
+      ]
+    },
+    {
+      "binary": "scaled_mm_rowwise_pattern",
+      "cases": [
+        {
+          "name": "safe_rowwise_scale_read",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./scaled_mm_rowwise_pattern safe_rowwise_scale_read",
+          "source": {
+            "kind": "github",
+            "description": "Safe control for a row-wise scale metadata read derived from PyTorch issue 133334.",
+            "url": "https://github.com/pytorch/pytorch/issues/133334"
+          }
+        },
+        {
+          "name": "rowwise_scale_tail_oob_read",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./scaled_mm_rowwise_pattern rowwise_scale_tail_oob_read",
+          "source": {
+            "kind": "github",
+            "description": "Derived from PyTorch scaled_mm row-wise FP8 issue 133334, where tile padding caused a tail read past the scale_a metadata buffer.",
+            "url": "https://github.com/pytorch/pytorch/issues/133334"
+          }
+        }
+      ]
+    },
+    {
+      "binary": "bgmv_tile_pattern",
+      "cases": [
+        {
+          "name": "safe_bgmv_tile_read",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./bgmv_tile_pattern safe_bgmv_tile_read",
+          "source": {
+            "kind": "github",
+            "description": "Safe control for a Punica-style BGMV tile read derived from vLLM issue 6902 and related fix discussions.",
+            "url": "https://github.com/vllm-project/vllm/issues/6902"
+          }
+        },
+        {
+          "name": "bgmv_tile_overflow_read",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./bgmv_tile_pattern bgmv_tile_overflow_read",
+          "source": {
+            "kind": "github",
+            "description": "Derived from the vLLM Punica BGMV bug discussed in issues 6902 and 4756 and fixed in PR 5169, where tile/vectorized input reads could overflow the tail of X for specific feat_in shapes.",
+            "url": "https://github.com/vllm-project/vllm/pull/5169"
+          }
+        }
+      ]
+    },
+    {
+      "binary": "llama_copy_override_pattern",
+      "cases": [
+        {
+          "name": "safe_llama_override_copy",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./llama_copy_override_pattern safe_llama_override_copy",
+          "source": {
+            "kind": "github",
+            "description": "Safe control for the llama.cpp tensor-buffer override copy pattern discussed in issue 12798.",
+            "url": "https://github.com/ggml-org/llama.cpp/issues/12798"
+          }
+        },
+        {
+          "name": "llama_override_one_past_end_read",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./llama_copy_override_pattern llama_override_one_past_end_read",
+          "source": {
+            "kind": "github",
+            "description": "Derived from llama.cpp issue 12798, where a tensor-buffer override path triggered an 8-byte one-past-end read in an F16 copy kernel.",
+            "url": "https://github.com/ggml-org/llama.cpp/issues/12798"
+          }
+        }
+      ]
+    },
+    {
+      "binary": "mla_concat_threshold_pattern",
+      "cases": [
+        {
+          "name": "safe_mla_concat_read",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./mla_concat_threshold_pattern safe_mla_concat_read",
+          "source": {
+            "kind": "github",
+            "description": "Safe control for the concat_mla_absorb_q long-input pattern discussed in SGLang issue 12250.",
+            "url": "https://github.com/sgl-project/sglang/issues/12250"
+          }
+        },
+        {
+          "name": "mla_concat_threshold_oob_read",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./mla_concat_threshold_pattern mla_concat_threshold_oob_read",
+          "source": {
+            "kind": "github",
+            "description": "Derived from SGLang issue 12250, where concat_mla_absorb_q failed only beyond a long-input threshold and behaved like a shape-sensitive tail read past the rope-side buffer.",
+            "url": "https://github.com/sgl-project/sglang/issues/12250"
+          }
+        }
+      ]
+    },
+    {
+      "binary": "multimargin_target_pattern",
+      "cases": [
+        {
+          "name": "safe_multimargin_target_read",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./multimargin_target_pattern safe_multimargin_target_read",
+          "source": {
+            "kind": "github",
+            "description": "Safe control for the MultiMarginLoss target lookup pattern discussed in PyTorch issue 88724.",
+            "url": "https://github.com/pytorch/pytorch/issues/88724"
+          }
+        },
+        {
+          "name": "negative_multimargin_target_read",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./multimargin_target_pattern negative_multimargin_target_read",
+          "source": {
+            "kind": "github",
+            "description": "Derived from PyTorch issue 88724, where an invalid negative target let the kernel read input[target] before the start of the row buffer until PR 89008 added range checks.",
+            "url": "https://github.com/pytorch/pytorch/pull/89008"
+          }
+        }
+      ]
+    },
+    {
+      "binary": "qo_indptr_overflow_pattern",
+      "cases": [
+        {
+          "name": "safe_qo_indptr_read",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./qo_indptr_overflow_pattern safe_qo_indptr_read",
+          "source": {
+            "kind": "github",
+            "description": "Safe control for the SGLang qo_indptr stride-multiplication pattern discussed in issue 20389.",
+            "url": "https://github.com/sgl-project/sglang/issues/20389"
+          }
+        },
+        {
+          "name": "qo_indptr_int32_overflow_read",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./qo_indptr_overflow_pattern qo_indptr_int32_overflow_read",
+          "source": {
+            "kind": "github",
+            "description": "Derived from SGLang issue 20389, where int32 qo_indptr * stride_qbs overflows and the synthetic probe materializes the wrapped offset as a stable pre-allocation read inside a small allocation.",
+            "url": "https://github.com/sgl-project/sglang/issues/20389"
+          }
+        }
+      ]
+    },
+    {
+      "binary": "varlen_metadata_pattern",
+      "cases": [
+        {
+          "name": "safe_varlen_metadata_read",
+          "bugClass": "none",
+          "memorySpace": "global",
+          "expectedSignal": "none",
+          "reproducer": "./varlen_metadata_pattern safe_varlen_metadata_read",
+          "source": {
+            "kind": "github",
+            "description": "Safe control for FlashAttention varlen metadata where cu_seqlens matches the actual q token count.",
+            "url": "https://github.com/Dao-AILab/flash-attention/issues/2381"
+          }
+        },
+        {
+          "name": "varlen_cu_seqlens_mismatch_read",
+          "bugClass": "oobRead",
+          "memorySpace": "global",
+          "expectedSignal": "oobRead",
+          "reproducer": "./varlen_metadata_pattern varlen_cu_seqlens_mismatch_read",
+          "source": {
+            "kind": "github",
+            "description": "Derived from FlashAttention issue 2381, where varlen metadata claims more total tokens than exist in q/k/v and the last sequence reads beyond the real token buffer.",
+            "url": "https://github.com/Dao-AILab/flash-attention/issues/2381"
+          }
+        }
+      ]
+    }
+  ]
+}
